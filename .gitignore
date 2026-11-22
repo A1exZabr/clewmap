@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.vsix
+*.tsbuildinfo
+.DS_Store
+coverage/
+
+# Clewmap: служебные файлы графа (сам граф .clewmap/ хранится в git)
+.clewmap/.queue.json
+.clewmap/.lock
+.clewmap/.cache/

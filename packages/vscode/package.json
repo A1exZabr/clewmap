@@ -1,0 +1,17 @@
+{
+  "name": "@clewmap/vscode",
+  "displayName": "Clewmap",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./dist/extension.js",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --platform=node --format=cjs --target=node20 --external:vscode --outfile=dist/extension.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@clewmap/core": "workspace:*"
+  }
+}

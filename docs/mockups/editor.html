@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Редактор с Clewmap</title>
+
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#1E1F24}
+a{color:#A99BFF}a:hover{color:#C8BEFF}
+</style>
+</head>
+<body>
+
+
+<div style="width: 100%; min-height: 980px; display: flex; flex-direction: column; background: #1E1F24; color: #D4D4D8; font-family: Inter, system-ui, sans-serif; font-size: 13px; box-sizing: border-box">
+
+<div style="display: flex; flex-wrap: wrap; gap: 12px 28px; align-items: center; padding: 16px 24px; background: #101114; border-bottom: 1px solid #2A2B33">
+<div style="font-size: 15px; font-weight: 700; color: #FFFFFF; margin-right: 8px">Как читать макет</div>
+<div style="display: flex; gap: 8px; align-items: center"><span style="display: inline-flex; width: 20px; height: 20px; border-radius: 10px; background: #8B7CF6; color: #111114; font-size: 11px; font-weight: 700; align-items: center; justify-content: center">1</span><span>Описание над функцией</span></div>
+<div style="display: flex; gap: 8px; align-items: center"><span style="display: inline-flex; width: 20px; height: 20px; border-radius: 10px; background: #8B7CF6; color: #111114; font-size: 11px; font-weight: 700; align-items: center; justify-content: center">2</span><span>Подсказка при наведении на вызов</span></div>
+<div style="display: flex; gap: 8px; align-items: center"><span style="display: inline-flex; width: 20px; height: 20px; border-radius: 10px; background: #8B7CF6; color: #111114; font-size: 11px; font-weight: 700; align-items: center; justify-content: center">3</span><span>Цветная полоса: какой слой задевает строка</span></div>
+<div style="display: flex; gap: 8px; align-items: center"><span style="display: inline-flex; width: 20px; height: 20px; border-radius: 10px; background: #8B7CF6; color: #111114; font-size: 11px; font-weight: 700; align-items: center; justify-content: center">4</span><span>Панель: соседи функции и влияние коммита</span></div>
+</div>
+
+<div style="display: flex; align-items: center; height: 36px; padding: 0 16px; background: #17181C; border-bottom: 1px solid #2A2B33; gap: 2px">
+<div style="padding: 9px 14px; background: #1E1F24; color: #FFFFFF; border-top: 2px solid #8B7CF6; font-size: 12px">order.py</div>
+<div style="padding: 9px 14px; color: #9A9AA3; font-size: 12px">pricing.py</div>
+<div style="padding: 9px 14px; color: #9A9AA3; font-size: 12px">payments.py</div>
+<div style="margin-left: auto; color: #9A9AA3; font-size: 12px">shop-bot</div>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; flex: 1 1 auto; align-items: stretch">
+
+<div style="flex: 1 1 220px; max-width: 260px; min-width: 200px; background: #17181C; border-right: 1px solid #2A2B33; padding: 14px 0; box-sizing: border-box">
+<div style="padding: 0 16px 10px; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; color: #9A9AA3">ПРОВОДНИК</div>
+<div style="padding: 4px 16px; color: #D4D4D8">src</div>
+<div style="padding: 4px 16px 4px 28px; color: #D4D4D8">bot / handlers</div>
+<div style="display: flex; align-items: center; gap: 8px; padding: 4px 16px 4px 40px; background: #2A2B33; color: #FFFFFF"><span style="width: 8px; height: 8px; border-radius: 4px; background: #5AA9F5"></span>order.py</div>
+<div style="display: flex; align-items: center; gap: 8px; padding: 4px 16px 4px 40px; color: #D4D4D8"><span style="width: 8px; height: 8px; border-radius: 4px; background: #5AA9F5"></span>catalog.py</div>
+<div style="padding: 4px 16px 4px 28px; color: #D4D4D8">services</div>
+<div style="display: flex; align-items: center; gap: 8px; padding: 4px 16px 4px 40px; color: #D4D4D8"><span style="width: 8px; height: 8px; border-radius: 4px; background: #F2A65A"></span>pricing.py<span style="margin-left: auto; font-size: 11px; color: #F2A65A">изм.</span></div>
+<div style="display: flex; align-items: center; gap: 8px; padding: 4px 16px 4px 40px; color: #D4D4D8"><span style="width: 8px; height: 8px; border-radius: 4px; background: #E58AD8"></span>payments.py</div>
+<div style="padding: 4px 16px 4px 28px; color: #D4D4D8">db</div>
+<div style="display: flex; align-items: center; gap: 8px; padding: 4px 16px 4px 40px; color: #D4D4D8"><span style="width: 8px; height: 8px; border-radius: 4px; background: #6FD69A"></span>orders_repo.py</div>
+<div style="display: flex; align-items: center; gap: 8px; padding: 4px 16px 4px 40px; color: #D4D4D8"><span style="width: 8px; height: 8px; border-radius: 4px; background: #6FD69A"></span>promo_repo.py</div>
+<div style="padding: 4px 16px 4px 16px; margin-top: 8px; color: #9A9AA3">.clewmap</div>
+<div style="padding: 4px 16px 4px 28px; color: #9A9AA3; font-size: 12px">граф по модулям, в git</div>
+</div>
+
+<div style="flex: 999 1 560px; min-width: 0; background: #1E1F24; display: flex; flex-direction: column">
+<div style="padding: 8px 20px; font-size: 12px; color: #9A9AA3; border-bottom: 1px solid #2A2B33">src › bot › handlers › order.py</div>
+<div style="position: relative; padding: 16px 0 40px; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 13.5px; overflow-x: auto">
+
+<div style="display: flex; height: 22px; align-items: center"><div style="width: 3px; height: 22px"></div><div style="width: 14px"></div><div style="width: 36px; text-align: right; color: #7D808B; font-size: 12px">1</div><div style="padding-left: 16px; white-space: pre"><span style="color: #C792EA">from</span> services.pricing <span style="color: #C792EA">import</span> calc_total, apply_promo</div></div>
+<div style="display: flex; height: 22px; align-items: center"><div style="width: 3px; height: 22px"></div><div style="width: 14px"></div><div style="width: 36px; text-align: right; color: #7D808B; font-size: 12px">2</div><div style="padding-left: 16px; white-space: pre"><span style="color: #C792EA">from</span> services <span style="color: #C792EA">import</span> payments</div></div>
+<div style="display: flex; height: 22px; align-items: center"><div style="width: 3px; height: 22px"></div><div style="width: 14px"></div><div style="width: 36px; text-align: right; color: #7D808B; font-size: 12px">3</div><div style="padding-left: 16px; white-space: pre"><span style="color: #C792EA">from</span> db <span style="color: #C792EA">import</span> orders_repo</div></div>
+<div style="display: flex; height: 22px; align-items: center"><div style="width: 3px; height: 22px"></div><div style="width: 14px"></div><div style="width: 36px; text-align: right; color: #7D808B; font-size: 12px">4</div><div style="padding-left: 16px; white-space: pre"> </div></div>
+
+<div style="display: flex; height: 22px; align-items: center; gap: 8px; padding-left: 69px; font-family: Inter, system-ui, sans-serif; font-size: 12px; color: #9A9AA3; white-space: nowrap">
+<span style="display: inline-flex; width: 18px; height: 18px; border-radius: 9px; background: #8B7CF6; color: #111114; font-size: 10px; font-weight: 700; align-items: center; justify-content: center; flex: none">1</span>
+<span>Принимает корзину, считает сумму, сохраняет заказ и шлёт ссылку на оплату</span>
+<span style="color: #5C5F6A">·</span>
+<button type="button" style="all: unset; cursor: pointer; color: #A99BFF">вызывают: 2</button>
+<span style="color: #5C5F6A">·</span>
+<button type="button" style="all: unset; cursor: pointer; color: #A99BFF">ходит в: БД, платёжный API</button>
+</div>
+<div style="display: flex; height: 22px; align-items: center"><div style="width: 3px; height: 22px"></div><div style="width: 14px"></div><div style="width: 36px; text-align: right; color: #7D808B; font-size: 12px">5</div><div style="padding-left: 16px; white-space: pre"><span style="color: #C792EA">async def</span> <span style="color: #82AAFF">create_order</span>(message, cart):</div></div>
+<div style="display: flex; height: 22px; align-items: center"><div style="width: 3px; height: 22px; background: #F2A65A"></div><div style="width: 14px"></div><div style="width: 36px; text-align: right; color: #7D808B; font-size: 12px">6</div><div style="padding-left: 16px; white-space: pre">    total = <span style="color: #82AAFF">calc_total</span>(cart.items)</div></div>
+<div style="display: flex; height: 22px; align-items: center; background: rgba(242,166,90,0.08)"><div style="width: 3px; height: 22px; background: #F2A65A"></div><div style="width: 14px; text-align: center; color: #F2A65A; font-size: 11px; font-weight: 700">Δ</div><div style="width: 36px; text-align: right; color: #7D808B; font-size: 12px">7</div><div style="padding-left: 16px; white-space: pre">    total = <span style="color: #82AAFF; background: rgba(139,124,246,0.22); border-bottom: 1px dashed #A99BFF">apply_promo</span>(total, cart.promo)</div></div>
+<div style="display: flex; height: 22px; align-items: center"><div style="width: 3px; height: 22px; background: #6FD69A"></div><div style="width: 14px"></div><div style="width: 36px; text-align: right; color: #7D808B; font-size: 12px">8</div><div style="padding-left: 16px; white-space: pre">    order = <span style="color: #C792EA">await</span> orders_repo.<span style="color: #82AAFF">save</span>(cart, total)</div></div>
+<div style="display: flex; height: 22px; align-items: center"><div style="width: 3px; height: 22px; background: #E58AD8"></div><div style="width: 14px"></div><div style="width: 36px; text-align: right; color: #7D808B; font-size: 12px">9</div><div style="padding-left: 16px; white-space: pre">    link = <span style="color: #C792EA">await</span> payments.<span style="color: #82AAFF">create_link</span>(order)</div></div>
+<div style="display: flex; height: 22px; align-items: center"><div style="width: 3px; height: 22px; background: #5AA9F5"></div><div style="width: 14px"></div><div style="width: 36px; text-align: right; color: #7D808B; font-size: 12px">10</div><div style="padding-left: 16px; white-space: pre">    <span style="color: #C792EA">await</span> message.<span style="color: #82AAFF">answer</span>(texts.PAY.<span style="color: #82AAFF">format</span>(link=link))</div></div>
+<div style="display: flex; height: 22px; align-items: center"><div style="width: 3px; height: 22px"></div><div style="width: 14px"></div><div style="width: 36px; text-align: right; color: #7D808B; font-size: 12px">11</div><div style="padding-left: 16px; white-space: pre"> </div></div>
+
+<div style="display: flex; height: 22px; align-items: center; gap: 8px; padding-left: 69px; font-family: Inter, system-ui, sans-serif; font-size: 12px; color: #9A9AA3; white-space: nowrap">
+<span>Кнопка «Оформить» в боте: достаёт корзину из состояния и создаёт заказ</span>
+<span style="color: #5C5F6A">·</span>
+<button type="button" style="all: unset; cursor: pointer; color: #A99BFF">вызывают: 1</button>
+<span style="color: #5C5F6A">·</span>
+<button type="button" style="all: unset; cursor: pointer; color: #A99BFF">ходит в: create_order</button>
+</div>
+<div style="display: flex; height: 22px; align-items: center"><div style="width: 3px; height: 22px"></div><div style="width: 14px"></div><div style="width: 36px; text-align: right; color: #7D808B; font-size: 12px">12</div><div style="padding-left: 16px; white-space: pre"><span style="color: #C792EA">async def</span> <span style="color: #82AAFF">on_checkout_click</span>(callback, state):</div></div>
+<div style="display: flex; height: 22px; align-items: center"><div style="width: 3px; height: 22px; background: #5AA9F5"></div><div style="width: 14px"></div><div style="width: 36px; text-align: right; color: #7D808B; font-size: 12px">13</div><div style="padding-left: 16px; white-space: pre">    data = <span style="color: #C792EA">await</span> state.<span style="color: #82AAFF">get_data</span>()</div></div>
+<div style="display: flex; height: 22px; align-items: center"><div style="width: 3px; height: 22px; background: #5AA9F5"></div><div style="width: 14px"></div><div style="width: 36px; text-align: right; color: #7D808B; font-size: 12px">14</div><div style="padding-left: 16px; white-space: pre">    <span style="color: #C792EA">await</span> <span style="color: #82AAFF">create_order</span>(callback.message, data[<span style="color: #C3E88D">"cart"</span>])</div></div>
+
+
+<div style="position: absolute; left: 150px; top: 196px; width: min(460px, calc(100% - 166px)); box-sizing: border-box; background: #26272E; border: 1px solid #3A3C45; border-radius: 12px; box-shadow: 0 16px 40px rgba(0,0,0,0.45); padding: 16px; font-family: Inter, system-ui, sans-serif; font-size: 13px; line-height: 1.5; display: flex; flex-direction: column; gap: 12px; white-space: normal">
+<div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
+<span style="display: inline-flex; width: 18px; height: 18px; border-radius: 9px; background: #8B7CF6; color: #111114; font-size: 10px; font-weight: 700; align-items: center; justify-content: center">2</span>
+<span style="font-family: 'JetBrains Mono', ui-monospace, monospace; color: #FFFFFF; font-weight: 500">apply_promo(total, promo)</span>
+<span style="padding: 2px 8px; border-radius: 6px; background: #F2A65A; color: #1A1206; font-size: 11px; font-weight: 600">Сервис</span>
+<span style="margin-left: auto; font-size: 12px; color: #9A9AA3">pricing.py:41</span>
+</div>
+<div style="color: #E4E4E7">Применяет промокод к сумме заказа. Проверяет срок действия и лимит использований, затем вычитает процент или фиксированную скидку. Если промокод не подходит, возвращает сумму без изменений.</div>
+<div style="display: flex; flex-direction: column; gap: 4px; font-size: 12px">
+<div><span style="color: #9A9AA3">Вызывает: </span><span style="font-family: 'JetBrains Mono', ui-monospace, monospace; color: #82AAFF">promo_repo.get</span>, <span style="font-family: 'JetBrains Mono', ui-monospace, monospace; color: #82AAFF">is_expired</span></div>
+<div><span style="color: #9A9AA3">Вызывают: </span><span style="font-family: 'JetBrains Mono', ui-monospace, monospace; color: #82AAFF">create_order</span>, <span style="font-family: 'JetBrains Mono', ui-monospace, monospace; color: #82AAFF">preview_cart</span></div>
+</div>
+<div style="padding: 8px 10px; border-radius: 8px; background: rgba(242,166,90,0.12); color: #F5C08A; font-size: 12px">Изменена в последнем коммите a3f9c1: добавлен лимит использований</div>
+<div style="display: flex; gap: 8px; flex-wrap: wrap">
+<button type="button" style="height: 32px; padding: 0 12px; border-radius: 8px; border: none; background: #8B7CF6; color: #111114; font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer">Объяснить подробнее</button>
+<button type="button" style="height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid #3A3C45; background: transparent; color: #D4D4D8; font-family: inherit; font-size: 12px; cursor: pointer">Открыть на графе</button>
+</div>
+<div style="font-size: 11px; color: #9A9AA3">Описание взято из графа мгновенно, без запроса к модели</div>
+</div>
+
+</div>
+</div>
+
+<div style="flex: 1 1 340px; max-width: 380px; min-width: 320px; background: #17181C; border-left: 1px solid #2A2B33; padding: 16px; box-sizing: border-box; display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; align-items: center; gap: 8px">
+<span style="display: inline-flex; width: 20px; height: 20px; border-radius: 10px; background: #8B7CF6; color: #111114; font-size: 11px; font-weight: 700; align-items: center; justify-content: center">4</span>
+<span style="font-size: 14px; font-weight: 700; color: #FFFFFF">Clewmap</span>
+<span style="margin-left: auto; font-size: 11px; color: #6FD69A">граф актуален</span>
+</div>
+<div style="display: flex; gap: 4px; padding: 3px; background: #101114; border-radius: 8px">
+<button type="button" style="flex: 1; height: 30px; border: none; border-radius: 6px; background: #2A2B33; color: #FFFFFF; font-family: inherit; font-size: 12px">Соседи</button>
+<button type="button" style="flex: 1; height: 30px; border: none; border-radius: 6px; background: transparent; color: #9A9AA3; font-family: inherit; font-size: 12px">Влияние</button>
+<button type="button" style="flex: 1; height: 30px; border: none; border-radius: 6px; background: transparent; color: #9A9AA3; font-family: inherit; font-size: 12px">Поиск</button>
+</div>
+
+<div style="position: relative; width: 308px; height: 300px; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11px">
+<svg aria-hidden="true" width="11" height="8" viewBox="0 0 11 8" preserveAspectRatio="none" style="position: absolute; left: 88px; top: 122px; width: 11px; height: 8px; overflow: visible; fill: none; stroke: #5B5D66; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round"><path d="M 0 4 L 11 4"></path></svg>
+<svg aria-hidden="true" width="11" height="8" viewBox="0 0 11 8" preserveAspectRatio="none" style="position: absolute; left: 88px; top: 182px; width: 11px; height: 8px; overflow: visible; fill: none; stroke: #5B5D66; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round"><path d="M 0 4 L 11 4"></path></svg>
+<svg aria-hidden="true" width="8" height="60" viewBox="0 0 8 60" preserveAspectRatio="none" style="position: absolute; left: 95px; top: 126px; width: 8px; height: 60px; overflow: visible; fill: none; stroke: #5B5D66; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round"><path d="M 4 0 L 4 60"></path></svg>
+<svg aria-hidden="true" width="11" height="8" viewBox="0 0 11 8" preserveAspectRatio="none" style="position: absolute; left: 99px; top: 152px; width: 11px; height: 8px; overflow: visible; fill: none; stroke: #5B5D66; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round"><path d="M 0 4 L 11 4"></path></svg>
+<svg aria-hidden="true" width="11" height="8" viewBox="0 0 11 8" preserveAspectRatio="none" style="position: absolute; left: 198px; top: 152px; width: 11px; height: 8px; overflow: visible; fill: none; stroke: #5B5D66; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round"><path d="M 0 4 L 11 4"></path></svg>
+<svg aria-hidden="true" width="8" height="180" viewBox="0 0 8 180" preserveAspectRatio="none" style="position: absolute; left: 205px; top: 66px; width: 8px; height: 180px; overflow: visible; fill: none; stroke: #5B5D66; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round"><path d="M 4 0 L 4 180"></path></svg>
+<svg aria-hidden="true" width="11" height="8" viewBox="0 0 11 8" preserveAspectRatio="none" style="position: absolute; left: 209px; top: 62px; width: 11px; height: 8px; overflow: visible; fill: none; stroke: #5B5D66; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round"><path d="M 0 4 L 11 4"></path></svg>
+<svg aria-hidden="true" width="11" height="8" viewBox="0 0 11 8" preserveAspectRatio="none" style="position: absolute; left: 209px; top: 122px; width: 11px; height: 8px; overflow: visible; fill: none; stroke: #F2A65A; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round"><path d="M 0 4 L 11 4"></path></svg>
+<svg aria-hidden="true" width="11" height="8" viewBox="0 0 11 8" preserveAspectRatio="none" style="position: absolute; left: 209px; top: 182px; width: 11px; height: 8px; overflow: visible; fill: none; stroke: #5B5D66; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round"><path d="M 0 4 L 11 4"></path></svg>
+<svg aria-hidden="true" width="11" height="8" viewBox="0 0 11 8" preserveAspectRatio="none" style="position: absolute; left: 209px; top: 242px; width: 11px; height: 8px; overflow: visible; fill: none; stroke: #5B5D66; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round"><path d="M 0 4 L 11 4"></path></svg>
+<div style="position: absolute; left: 0px; top: 8px; width: 88px; font-family: Inter, system-ui, sans-serif; color: #9A9AA3">Вызывают</div>
+<div style="position: absolute; left: 110px; top: 8px; width: 88px; font-family: Inter, system-ui, sans-serif; color: #9A9AA3; text-align: center">Функция</div>
+<div style="position: absolute; left: 220px; top: 8px; width: 88px; font-family: Inter, system-ui, sans-serif; color: #9A9AA3">Вызывает</div>
+<div style="position: absolute; left: 0px; top: 108px; width: 88px; height: 36px; box-sizing: border-box; padding: 4px; display: flex; align-items: center; justify-content: center; text-align: center; background: #1E1F24; border: 1px solid #5AA9F5; border-radius: 8px; color: #D4D4D8">on_checkout</div>
+<div style="position: absolute; left: 0px; top: 168px; width: 88px; height: 36px; box-sizing: border-box; padding: 4px; display: flex; align-items: center; justify-content: center; text-align: center; background: #1E1F24; border: 1px solid #5AA9F5; border-radius: 8px; color: #D4D4D8">retry_pay</div>
+<div style="position: absolute; left: 110px; top: 134px; width: 88px; height: 44px; box-sizing: border-box; padding: 4px; display: flex; align-items: center; justify-content: center; text-align: center; background: #8B7CF6; border-radius: 8px; color: #111114; font-weight: 600">create_order</div>
+<div style="position: absolute; left: 220px; top: 48px; width: 88px; height: 36px; box-sizing: border-box; padding: 4px; display: flex; align-items: center; justify-content: center; text-align: center; background: #1E1F24; border: 1px solid #F2A65A; border-radius: 8px; color: #D4D4D8">calc_total</div>
+<div style="position: absolute; left: 220px; top: 108px; width: 88px; height: 36px; box-sizing: border-box; padding: 4px; display: flex; align-items: center; justify-content: center; text-align: center; background: rgba(242,166,90,0.16); border: 1.5px solid #F2A65A; border-radius: 8px; color: #FFFFFF">Δ apply_promo</div>
+<div style="position: absolute; left: 220px; top: 168px; width: 88px; height: 36px; box-sizing: border-box; padding: 4px; display: flex; align-items: center; justify-content: center; text-align: center; background: #1E1F24; border: 1px solid #6FD69A; border-radius: 8px; color: #D4D4D8">orders.save</div>
+<div style="position: absolute; left: 220px; top: 228px; width: 88px; height: 36px; box-sizing: border-box; padding: 4px; display: flex; align-items: center; justify-content: center; text-align: center; background: #1E1F24; border: 1px solid #E58AD8; border-radius: 8px; color: #D4D4D8">create_link</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; align-items: center; gap: 8px">
+<span style="display: inline-flex; width: 18px; height: 18px; border-radius: 9px; background: #8B7CF6; color: #111114; font-size: 10px; font-weight: 700; align-items: center; justify-content: center">3</span>
+<span style="font-size: 12px; font-weight: 600; color: #FFFFFF">Слои (цвет полосы у строки)</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; font-size: 12px">
+<div style="display: flex; align-items: center; gap: 8px"><span style="width: 12px; height: 4px; border-radius: 2px; background: #5AA9F5"></span>Обработчик бота</div>
+<div style="display: flex; align-items: center; gap: 8px"><span style="width: 12px; height: 4px; border-radius: 2px; background: #F2A65A"></span>Сервис</div>
+<div style="display: flex; align-items: center; gap: 8px"><span style="width: 12px; height: 4px; border-radius: 2px; background: #6FD69A"></span>Данные (БД)</div>
+<div style="display: flex; align-items: center; gap: 8px"><span style="width: 12px; height: 4px; border-radius: 2px; background: #E58AD8"></span>Внешний API</div>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 10px; background: #1E1F24; border: 1px solid #2A2B33">
+<div style="font-size: 12px; font-weight: 600; color: #FFFFFF">Последний коммит a3f9c1</div>
+<div style="font-size: 12px; color: #D4D4D8">Изменена <span style="font-family: 'JetBrains Mono', ui-monospace, monospace; color: #F2A65A">apply_promo</span>. Затронуты 2 функции: <span style="font-family: 'JetBrains Mono', ui-monospace, monospace; color: #82AAFF">create_order</span>, <span style="font-family: 'JetBrains Mono', ui-monospace, monospace; color: #82AAFF">preview_cart</span></div>
+<div style="font-size: 12px; color: #9A9AA3">Связи пересобраны за 3 с · 4 описания обновлены</div>
+<div style="font-size: 12px; color: #F5C08A">preview_cart: описание устарело, пересчитается при наведении</div>
+</div>
+</div>
+
+</div>
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px 20px; min-height: 28px; padding: 4px 16px; background: #26272E; border-top: 1px solid #2A2B33; font-size: 12px; color: #D4D4D8; box-sizing: border-box">
+<span><span style="color: #6FD69A">●</span> Clewmap: граф актуален · a3f9c1</span>
+<span>MCP: подключён к Claude Code</span>
+<span style="color: #9A9AA3">Всё локально, код никуда не уходит</span>
+<span style="margin-left: auto; color: #9A9AA3">Python · UTF-8</span>
+</div>
+
+</div>
+
+
+</body>
+</html>
