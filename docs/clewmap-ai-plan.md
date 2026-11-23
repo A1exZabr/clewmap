@@ -138,7 +138,7 @@ clewmap/
 **Результат фазы:** `clewmap build` на фикстурах создаёт `.clewmap/` с символами и связями, без LLM.
 
 ### 1.1 Схема графа (`packages/core`)
-- [ ] Создай `src/schema.ts` со схемами zod и выведенными типами:
+- [x] Создай `src/schema.ts` со схемами zod и выведенными типами:
 
 ```ts
 // manifest.json
@@ -209,29 +209,29 @@ Summary = {
 }
 ```
 
-- [ ] Создай `src/paths.ts`: путь модуля → путь JSON в `.clewmap/modules/`, обратно; нормализация разделителей под Windows
-- [ ] Создай `src/hash.ts`: `sha256(text)`, `normalizeBody(text, language)` (убрать комментарии, схлопнуть пробелы)
-- [ ] Создай `src/store.ts`: `readGraph(root)`, `writeModule(root, module)` (атомарно: temp-файл + rename, стабильный порядок ключей и символов, отступ 2), `writeManifest`
-- [ ] Создай `src/index.ts` с классом `GraphIndex`: загружает все модули, строит `Map<id, SymbolNode>`, обратные связи `calledBy`, поиск символа по `(file, line)`, `neighbors(id, depth)`, `impact(ids)` (транзитивные вызывающие с ограничением глубины)
-- [ ] Создай `docs/graph-format.md`: человеческое описание формата с примером (это часть продукта: формат открытый)
-- [ ] Напиши тесты: сериализация стабильна (два прогона дают одинаковые байты), `calledBy` строится верно, поиск по строке
+- [x] Создай `src/paths.ts`: путь модуля → путь JSON в `.clewmap/modules/`, обратно; нормализация разделителей под Windows
+- [x] Создай `src/hash.ts`: `sha256(text)`, `normalizeBody(text, language)` (убрать комментарии, схлопнуть пробелы)
+- [x] Создай `src/store.ts`: `readGraph(root)`, `writeModule(root, module)` (атомарно: temp-файл + rename, стабильный порядок ключей и символов, отступ 2), `writeManifest`
+- [x] Создай `src/index.ts` с классом `GraphIndex`: загружает все модули, строит `Map<id, SymbolNode>`, обратные связи `calledBy`, поиск символа по `(file, line)`, `neighbors(id, depth)`, `impact(ids)` (транзитивные вызывающие с ограничением глубины) — класс в `src/graph-index.ts`, экспорт из `index.ts`; рядом `src/config.ts` (zod-схема конфига) и `src/glob.ts`
+- [x] Создай `docs/graph-format.md`: человеческое описание формата с примером (это часть продукта: формат открытый)
+- [x] Напиши тесты: сериализация стабильна (два прогона дают одинаковые байты), `calledBy` строится верно, поиск по строке
 
 ### 1.2 Индексатор (`packages/indexer`)
-- [ ] Создай `src/parser.ts`: ленивая инициализация web-tree-sitter, загрузка WASM-грамматик из пакета, кэш парсеров по языку
-- [ ] Создай интерфейс `LanguageAdapter { language; extensions; extractSymbols(tree, source); extractImports(tree); extractCalls(node) }` в `src/adapters/types.ts`
-- [ ] Реализуй `src/adapters/python.ts` через tree-sitter queries (`.scm`): `function_definition`, `class_definition`, методы внутри классов, `decorated_definition`, `import_statement`, `import_from_statement`, `call` (простые имена и `obj.attr`)
-- [ ] Реализуй `src/adapters/typescript.ts` (ts, tsx, js, jsx): `function_declaration`, `method_definition`, `class_declaration`, стрелочные функции в `const`, `export default`, `import` (включая алиасы из `tsconfig.json` paths), `call_expression`
-- [ ] Создай `src/resolve.ts`: разрешение вызова в id символа через таблицу импортов файла и локальные определения; не нашёл — `external:<текст вызова>`, `resolved: false`
-- [ ] Создай `src/links.ts` — связи между фронтом, бэком и ботом, детерминированно, по совпадению строк:
+- [x] Создай `src/parser.ts`: ленивая инициализация web-tree-sitter, загрузка WASM-грамматик из пакета, кэш парсеров по языку
+- [x] Создай интерфейс `LanguageAdapter { language; extensions; extractSymbols(tree, source); extractImports(tree); extractCalls(node) }` в `src/adapters/types.ts` — сделан одним методом `extract(tree, source, ctx)`: символы, импорты, вызовы и регистрации обработчиков за один обход, после чего дерево освобождается (WASM-память)
+- [x] Реализуй `src/adapters/python.ts` через tree-sitter queries (`.scm`): `function_definition`, `class_definition`, методы внутри классов, `decorated_definition`, `import_statement`, `import_from_statement`, `call` (простые имена и `obj.attr`) — обходом дерева, а не `.scm`-запросами: вызову нужен владелец (ближайшая функция), а запросы этого не дают; вложенные функции не символы, их вызовы достаются внешней
+- [x] Реализуй `src/adapters/typescript.ts` (ts, tsx, js, jsx): `function_declaration`, `method_definition`, `class_declaration`, стрелочные функции в `const`, `export default`, `import` (включая алиасы из `tsconfig.json` paths), `call_expression`; плюс `new X()`, JSX-компоненты `<CheckoutButton />` как вызовы, реэкспорты `export { } from` и `export * from`, поля-стрелки в классах
+- [x] Создай `src/resolve.ts`: разрешение вызова в id символа через таблицу импортов файла и локальные определения; не нашёл — `external:<текст вызова>`, `resolved: false`. Уточнение: встроенные функции и методы локальных переменных (`message.answer`, `res.json`) в граф не попадают — без типов их не разрешить, а как external они только шумят; `cart = new Cart()` → `cart.label()` разрешается в `Cart.label`
+- [x] Создай `src/links.ts` — связи между фронтом, бэком и ботом, детерминированно, по совпадению строк:
   - точки входа (`entry`): маршруты FastAPI/Flask (`@app.post("/api/checkout")`, `@router.get`), Express/Hono (`app.post('/api/checkout', handler)`), Next.js API routes по пути файла; aiogram (`F.data == "checkout"`, `Command("start")`), python-telegram-bot (`CallbackQueryHandler(pattern=...)`)
   - вызовы с фронта: `fetch('/api/checkout', { method: 'POST' })`, `axios.post('/api/checkout')`, обёртки вида `api.post(...)` по списку из конфига `links.httpClients`; кнопки бота: `InlineKeyboardButton(callback_data="checkout")`
   - сопоставление: метод + путь (параметры `/orders/{id}` ≈ `/orders/${id}` ≈ `/orders/:id`, базовый префикс из `links.apiPrefix`) или ключ callback; совпало — ребро `kind: "http"`/`"event"` с `via`, нет — `resolved: false`, ничего не выдумывать
   - на фикстурах: кнопка `CheckoutButton` в `ts-app` → `checkout()` → `POST /api/checkout` → `api_checkout` в `py-bot`; страница `Account` → `GET /api/orders/${id}` → `api_get_order`; кнопка «Оформить» бота (`callback_data="checkout"`) → `on_checkout_click`
-- [ ] Создай `src/layers.ts`: слой по glob-правилам из `clewmap.config.json` (пример ниже), иначе эвристика по папкам (`handlers|routes|controllers|bot` → handler, `services|domain` → service, `db|repo|models|dao` → data); вызов во внешний SDK (`requests`, `httpx`, `fetch`, `axios`, пакеты платёжек) → слой `external`
-- [ ] Создай `src/statements.ts`: для функции/метода — список операторов верхнего уровня тела (диапазон, тип узла tree-sitter, текст); вложенные `if`/`for`/`try`/`with` — один оператор целиком. Это сырьё для смысловых блоков (`CodeBlock`), сами блоки делает фаза 2
-- [ ] Создай `src/indexFile.ts`: файл → `ModuleFile` без описаний (`blocks: null`)
-- [ ] Создай `src/scan.ts`: обход репо с учётом `.gitignore` и `exclude` из конфига
-- [ ] Напиши тесты на фикстурах: ожидаемые символы, связи `create_order → apply_promo`, внешние вызовы, методы классов
+- [x] Создай `src/layers.ts`: слой по glob-правилам из `clewmap.config.json` (пример ниже), иначе эвристика по папкам (`handlers|routes|controllers|bot` → handler, `services|domain` → service, `db|repo|models|dao` → data); вызов во внешний SDK (`requests`, `httpx`, `fetch`, `axios`, пакеты платёжек) → слой `external`; символ с точкой входа (маршрут, callback) — слой handler: папка `api` бывает и у бэка, и у фронта
+- [x] Создай `src/statements.ts`: для функции/метода — список операторов верхнего уровня тела (диапазон, тип узла tree-sitter, текст); вложенные `if`/`for`/`try`/`with` — один оператор целиком. Это сырьё для смысловых блоков (`CodeBlock`), сами блоки делает фаза 2
+- [x] Создай `src/indexFile.ts`: файл → `ModuleFile` без описаний (`blocks: null`)
+- [x] Создай `src/scan.ts`: обход репо с учётом `.gitignore` и `exclude` из конфига
+- [x] Напиши тесты на фикстурах: ожидаемые символы, связи `create_order → apply_promo`, внешние вызовы, методы классов
 
 ```json
 // clewmap.config.json (пример, создаётся командой init)
@@ -244,16 +244,17 @@ Summary = {
     "data":     { "label": "Данные",     "color": "#6FD69A", "globs": ["src/db/**"] },
     "external": { "label": "Внешний API","color": "#E58AD8", "globs": [] }
   },
+  "links": { "apiPrefix": null, "httpClients": [] },
   "summaries": { "provider": "claude-cli", "model": null, "language": "ru", "batchSize": 20, "blocksMinLines": 8 },
   "hooks": { "preCommit": true, "postCommit": true }
 }
 ```
 
 ### 1.3 CLI: базовые команды (`packages/cli`)
-- [ ] Создай `src/bin.ts` с `commander`: `clewmap init`, `clewmap build`, `clewmap status`
-- [ ] `init`: создаёт `clewmap.config.json` (определяет языки и папки), `.clewmap/manifest.json`, дописывает в `.gitignore` служебные файлы `.clewmap/`
-- [ ] `build`: полная индексация без описаний (флаг `--no-summaries` по умолчанию в этой фазе), печатает число файлов, символов, связей, время
-- [ ] `status`: актуален ли граф (`lastCommit` vs `HEAD`, файлы с несовпавшим `fileHash`), сколько символов без описаний и с `stale`
+- [x] Создай `src/bin.ts` с `commander`: `clewmap init`, `clewmap build`, `clewmap status`
+- [x] `init`: создаёт `clewmap.config.json` (определяет языки и папки), `.clewmap/manifest.json`, дописывает в `.gitignore` служебные файлы `.clewmap/`
+- [x] `build`: полная индексация без описаний (сама логика в `@clewmap/indexer` → `buildGraph`, чтобы фаза 2 и тесты звали её без CLI) (флаг `--no-summaries` по умолчанию в этой фазе), печатает число файлов, символов, связей, время
+- [x] `status`: актуален ли граф (`lastCommit` vs `HEAD`, файлы с несовпавшим `fileHash`), сколько символов без описаний и с `stale`
 
 **✅ Проверка фазы 1:** `cd fixtures/py-bot && clewmap init && clewmap build` создаёт `.clewmap/modules/…/order.py.json`, где у `create_order` есть связь на `src/services/pricing.py#apply_promo`; повторный `build` не меняет ни одного байта. На общем корне фикстур кнопка из `ts-app` связана ребром `http` (`via: "POST /api/checkout"`) с обработчиком в `py-bot`.
 

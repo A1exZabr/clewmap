@@ -1,2 +1,1 @@
-/** Бинарь `clewmap` (init, build, status) появится в фазе 1. */
-export const CLI_PLACEHOLDER = true;
+export { build, init, status, type InitResult, type Log, type StatusResult } from './commands.js';
