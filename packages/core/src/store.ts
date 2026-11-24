@@ -74,7 +74,7 @@ export function serializeManifest(manifest: Manifest): string {
 }
 
 /** Пишет атомарно (temp + rename). Если содержимое не изменилось, файл не трогает. Возвращает true, если записал. */
-async function writeAtomic(file: string, content: string): Promise<boolean> {
+export async function writeAtomic(file: string, content: string): Promise<boolean> {
   try {
     if ((await readFile(file, 'utf8')) === content) return false;
   } catch {

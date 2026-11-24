@@ -28,7 +28,7 @@ const ALWAYS_SKIP = new Set([
   'site-packages',
 ]);
 
-const MAX_FILE_BYTES = 1024 * 1024;
+export const MAX_FILE_BYTES = 1024 * 1024;
 
 function skippedDir(rel: string): boolean {
   return rel.split('/').some((seg) => ALWAYS_SKIP.has(seg));
@@ -88,8 +88,23 @@ async function walk(root: string): Promise<string[]> {
   return out;
 }
 
-/** Исходники для индексации: учитывает .gitignore, include/exclude из конфига и поддерживаемые языки. */
-export async function scanFiles(root: string, config: Config): Promise<string[]> {
+/** Подходит ли файл для индексации по языку, служебным папкам и include/exclude. */
+export function isIndexable(file: string, config: Config): boolean {
+  if (skippedDir(file) || !grammarFor(file)) return false;
+  if (config.include.length && !matchAny(file, config.include)) return false;
+  return !matchAny(file, config.exclude);
+}
+
+/**
+ * Исходники для индексации: учитывает .gitignore, include/exclude из конфига и поддерживаемые языки.
+ * `staged` — только файлы из индекса git (то, что войдёт в коммит), без проверки рабочей копии.
+ */
+export async function scanFiles(
+  root: string,
+  config: Config,
+  opts: { staged?: readonly string[] } = {},
+): Promise<string[]> {
+  if (opts.staged) return [...new Set(opts.staged.filter((f) => isIndexable(f, config)))].sort();
   let files = await gitFiles(root);
   let ignore: string[] = [];
   if (files === null) {
@@ -98,10 +113,8 @@ export async function scanFiles(root: string, config: Config): Promise<string[]>
   }
   const result: string[] = [];
   for (const file of files) {
-    if (skippedDir(file) || !grammarFor(file)) continue;
+    if (!isIndexable(file, config)) continue;
     if (ignore.length && matchAny(file, ignore)) continue;
-    if (config.include.length && !matchAny(file, config.include)) continue;
-    if (matchAny(file, config.exclude)) continue;
     try {
       const st = await stat(path.join(root, file));
       if (!st.isFile() || st.size > MAX_FILE_BYTES) continue;

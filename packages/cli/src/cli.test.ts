@@ -33,11 +33,14 @@ describe('clewmap init / build / status on py-bot', () => {
 
   it('status reports a stale graph before build and a fresh one after', async () => {
     expect((await status(root)).upToDate).toBe(false);
-    const stats = await build(root);
+    const stats = await build(root, { summaries: false });
     expect(stats.files).toBe(8);
     expect(stats.linkEdges).toBe(1);
     const s = await status(root);
     expect(s.upToDate).toBe(true);
-    expect(s.withoutSummary).toBe(s.symbols);
+    // 24 символа, из них 7 — переменные модуля: им описания не нужны
+    expect(s.symbols).toBe(24);
+    expect(s.withoutSummary).toBe(17);
+    expect(s.queued).toBe(17);
   });
 });

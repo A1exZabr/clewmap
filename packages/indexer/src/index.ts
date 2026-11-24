@@ -23,5 +23,25 @@ export { ProjectTable, TsConfigResolver, splitId, type ResolvedTarget } from './
 export { eventMatches, httpMatches, normalizeRoutePath } from './links.js';
 export { isExternalSdk, layerForDir, layerForFile } from './layers.js';
 export { extractStatements, statementsForRange, type Statement } from './statements.js';
-export { scanFiles } from './scan.js';
-export { buildGraph, gitHead, indexProject, type BuildStats } from './build.js';
+export { isIndexable, scanFiles } from './scan.js';
+export {
+  SUMMARIZABLE_KINDS,
+  buildGraph,
+  indexProject,
+  syncGraph,
+  updateGraph,
+  type BuildStats,
+  type SyncOptions,
+  type SyncResult,
+  type UpdateMode,
+} from './build.js';
+export {
+  blobOid,
+  changesSince,
+  gitBusy,
+  gitHead,
+  readBlobs,
+  stagedBlobs,
+  stagedChanges,
+  type NameStatus,
+} from './git.js';

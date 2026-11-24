@@ -1,7 +1,10 @@
-import { existsSync } from 'node:fs';
-import { appendFile, readFile, writeFile } from 'node:fs/promises';
+import { spawn } from 'node:child_process';
+import { existsSync, openSync } from 'node:fs';
+import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import {
+  CACHE_DIR,
+  CLEWMAP_DIR,
   CONFIG_FILE,
   DEFAULT_LAYERS,
   FORMAT_VERSION,
@@ -11,19 +14,36 @@ import {
   readConfig,
   readManifest,
   readModule,
+  readQueue,
   sha256,
   writeManifest,
+  type Config,
   type Language,
 } from '@clewmap/core';
 import {
+  SUMMARIZABLE_KINDS,
   buildGraph,
+  gitBusy,
   gitHead,
   grammarFor,
   languageOf,
   layerForDir,
   scanFiles,
+  updateGraph,
+  type SyncResult,
+  type UpdateMode,
 } from '@clewmap/indexer';
+import {
+  createProvider,
+  readLock,
+  isStale,
+  summarize as runSummaries,
+  type SummarizeMode,
+  type SummarizeStats,
+  type SummaryProvider,
+} from '@clewmap/summarizer';
 import pc from 'picocolors';
+import { installHooks, uninstallHooks, type HookChange, type HookName } from './hooks.js';
 
 export type Log = (line: string) => void;
 
@@ -54,7 +74,7 @@ export interface InitResult {
 /** `clewmap init`: конфиг по найденным языкам и папкам, манифест, строки в .gitignore. */
 export async function init(
   root: string,
-  opts: { force?: boolean; log?: Log } = {},
+  opts: { force?: boolean; hooks?: boolean; log?: Log } = {},
 ): Promise<InitResult> {
   const log = opts.log ?? (() => {});
   const files = await scanFiles(root, parseConfig({ exclude: DEFAULT_EXCLUDE }));
@@ -97,7 +117,12 @@ export async function init(
         batchSize: 20,
         blocksMinLines: 8,
       },
-      hooks: { preCommit: true, postCommit: true },
+      hooks: {
+        preCommit: true,
+        postCommit: true,
+        summarize: 'post-commit',
+        summarizeTimeout: 120,
+      },
     };
     parseConfig(config);
     await writeFile(configPath, JSON.stringify(config, null, 2) + '\n', 'utf8');
@@ -132,27 +157,256 @@ export async function init(
     log(`${pc.green('✓')} added clewmap service files to .gitignore`);
   }
 
+  if (opts.hooks) await hook(root, 'install', { log });
+  else log(`${pc.dim('tip:')} clewmap hook install keeps the graph in sync on every commit`);
   log(`${pc.dim('next:')} clewmap build`);
   return { configCreated, languages, files: files.length };
 }
 
-/** `clewmap build`: полная индексация без описаний. */
-export async function build(root: string, opts: { log?: Log } = {}) {
+function describeSync(stats: SyncResult): string {
+  const parts = [`${stats.written} module file(s) written`];
+  if (stats.deleted) parts.push(`${stats.deleted} removed`);
+  if (stats.renamed) parts.push(`${stats.renamed} renamed`);
+  if (stats.queued) parts.push(`${stats.queued} queued for summaries`);
+  if (stats.staleMarked) parts.push(`${stats.staleMarked} summaries marked stale`);
+  return stats.written + stats.deleted + stats.queued + stats.staleMarked
+    ? parts.join(', ')
+    : 'graph unchanged';
+}
+
+function printSummaries(stats: SummarizeStats, log: Log): void {
+  if (stats.locked) return;
+  const parts = [`${stats.done} described`];
+  if (stats.failed) parts.push(pc.yellow(`${stats.failed} failed`));
+  if (stats.skipped) parts.push(`${stats.skipped} skipped`);
+  parts.push(`${stats.remaining} left in queue`);
+  log(
+    `${stats.failed ? pc.yellow('•') : pc.green('✓')} summaries: ${parts.join(', ')} in ${(stats.ms / 1000).toFixed(1)} s` +
+      (stats.tokens && (stats.tokens.input || stats.tokens.output)
+        ? pc.dim(` (${formatTokens(stats.tokens)})`)
+        : ''),
+  );
+}
+
+function formatTokens(t: { input: number; output: number }): string {
+  const k = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
+  return `tokens: ${k(t.input)} in, ${k(t.output)} out`;
+}
+
+/** `clewmap build`: полная индексация, затем описания всего, чего ещё нет (если не --no-summaries). */
+export async function build(
+  root: string,
+  opts: { log?: Log; summaries?: boolean; provider?: SummaryProvider } = {},
+) {
   const log = opts.log ?? (() => {});
   const stats = await buildGraph(root);
-  const changed = stats.written + stats.deleted;
   log(
     `${pc.green('✓')} ${stats.files} files, ${stats.symbols} symbols, ${stats.edges} edges ` +
       `(${stats.resolvedEdges} resolved, ${stats.linkEdges} cross-boundary) in ${stats.ms} ms`,
   );
-  log(
-    pc.dim(
-      changed
-        ? `${stats.written} module files written, ${stats.deleted} removed`
-        : 'graph unchanged',
-    ),
-  );
+  log(pc.dim(describeSync(stats)));
+  if (opts.summaries !== false) {
+    const config = await readConfig(root);
+    const s = await runSummaries(root, {
+      provider: opts.provider ?? createProvider(config),
+      config,
+      log: (l) => log(pc.dim(l)),
+    });
+    printSummaries(s, log);
+  }
   return stats;
+}
+
+export interface UpdateOptions {
+  mode: UpdateMode;
+  quiet?: boolean;
+  log?: Log;
+}
+
+/**
+ * `clewmap update`: переиндексирует изменённое, переносит описания, ставит задачи в очередь.
+ * Никогда не вызывает LLM. Молча выходит, если граф не создан или идёт rebase/merge.
+ */
+export async function update(root: string, opts: UpdateOptions): Promise<SyncResult | null> {
+  const log = opts.log ?? (() => {});
+  if (process.env.CLEWMAP_SKIP) return null;
+  if (!(await readManifest(root).catch(() => null))) {
+    if (!opts.quiet)
+      log(`${pc.yellow('•')} no .clewmap/ here — run ${pc.bold('clewmap init')} first`);
+    return null;
+  }
+  if (opts.mode.kind === 'staged' && (await gitBusy(root))) {
+    if (!opts.quiet) log(pc.dim('rebase/merge/cherry-pick in progress, skipping'));
+    return null;
+  }
+  const stats = await updateGraph(root, opts.mode);
+  if (!opts.quiet) {
+    log(`${pc.green('✓')} ${stats.parsed} file(s) re-parsed of ${stats.files} in ${stats.ms} ms`);
+    log(pc.dim(describeSync(stats)));
+  } else if (stats.written || stats.deleted) {
+    log(`clewmap: ${describeSync(stats)}`);
+  }
+  return stats;
+}
+
+export interface SummarizeCliOptions {
+  mode?: SummarizeMode;
+  limit?: number;
+  background?: boolean;
+  quiet?: boolean;
+  log?: Log;
+  provider?: SummaryProvider;
+  /** Для --background: как перезапустить себя (node + путь к bin.js). */
+  self?: { node: string; bin: string };
+  /** Вызов из хука: pre-commit описывает, только если hooks.summarize = "pre-commit". */
+  hook?: HookName;
+}
+
+export function summarizeLogPath(root: string): string {
+  return path.join(root, CLEWMAP_DIR, CACHE_DIR, 'summarize.log');
+}
+
+/** Окружение для фонового процесса: без переменных git из хука. */
+function detachedEnv(): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...process.env };
+  for (const key of Object.keys(env)) if (key.startsWith('GIT_')) delete env[key];
+  return env;
+}
+
+/** `clewmap summarize`: разбирает очередь описаний; --background — отсоединённым процессом. */
+export async function summarizeCommand(
+  root: string,
+  opts: SummarizeCliOptions = {},
+): Promise<SummarizeStats | { background: true; pid: number | undefined } | null> {
+  const log = opts.log ?? (() => {});
+  if (process.env.CLEWMAP_SKIP) return null;
+  if (!(await readManifest(root).catch(() => null))) {
+    if (!opts.quiet)
+      log(`${pc.yellow('•')} no .clewmap/ here — run ${pc.bold('clewmap init')} first`);
+    return null;
+  }
+  if (opts.hook === 'pre-commit') return preCommitSummaries(root, opts);
+  const mode = opts.mode ?? 'queue';
+  if (opts.background) {
+    if (mode === 'queue' && !(await readQueue(root)).items.length) return null;
+    const holder = await readLock(root);
+    if (holder && !isStale(holder, 2 * 60 * 60 * 1000)) return null;
+    const self = opts.self ?? { node: process.execPath, bin: process.argv[1]! };
+    const logFile = summarizeLogPath(root);
+    await mkdir(path.dirname(logFile), { recursive: true });
+    await appendFile(logFile, `\n=== ${new Date().toISOString()} summarize (${mode}) ===\n`);
+    const fd = openSync(logFile, 'a');
+    const args = [self.bin, '--cwd', root, 'summarize'];
+    if (mode === 'all') args.push('--all');
+    if (mode === 'stale') args.push('--stale');
+    if (opts.limit) args.push('--limit', String(opts.limit));
+    const child = spawn(self.node, args, {
+      cwd: root,
+      detached: true,
+      stdio: ['ignore', fd, fd],
+      env: detachedEnv(),
+      windowsHide: true,
+    });
+    child.unref();
+    if (!opts.quiet)
+      log(
+        `${pc.green('✓')} summarizing in background (pid ${child.pid}), log: ${path.relative(root, logFile)}`,
+      );
+    return { background: true, pid: child.pid };
+  }
+  const config: Config = await readConfig(root);
+  const stats = await runSummaries(root, {
+    provider: opts.provider ?? createProvider(config),
+    config,
+    mode,
+    limit: opts.limit,
+    log: (l) => log(pc.dim(l)),
+  });
+  printSummaries(stats, log);
+  return stats;
+}
+
+/**
+ * Описания из pre-commit (hooks.summarize = "pre-commit"): коммит ждёт, пока модель опишет изменённый код,
+ * чтобы описания уехали в том же коммите. Ждёт не дольше hooks.summarizeTimeout секунд (null — сколько нужно);
+ * по истечении текущий вызов отменяется, готовое остаётся, остальное доделает post-commit в фоне.
+ * Сообщения идут в stderr: git показывает их, пока коммит ждёт. Никогда не бросает.
+ */
+async function preCommitSummaries(
+  root: string,
+  opts: SummarizeCliOptions,
+): Promise<SummarizeStats | null> {
+  const say = opts.log ?? ((line: string) => process.stderr.write(line + '\n'));
+  let config: Config;
+  try {
+    config = await readConfig(root);
+  } catch {
+    return null;
+  }
+  if (config.hooks.summarize !== 'pre-commit' || (await gitBusy(root))) return null;
+  const queued = (await readQueue(root).catch(() => ({ items: [] }))).items.length;
+  if (!queued) return null;
+  const limit = config.hooks.summarizeTimeout;
+  say(
+    `clewmap: describing changed code before the commit (${queued} in queue, ` +
+      `${limit === null ? 'no time limit' : `up to ${limit} s`}; CLEWMAP_SKIP=1 skips)…`,
+  );
+  const ctrl = new AbortController();
+  const timer = limit === null ? null : setTimeout(() => ctrl.abort(), limit * 1000);
+  timer?.unref();
+  try {
+    const stats = await runSummaries(root, {
+      provider: opts.provider ?? createProvider(config),
+      config,
+      mode: 'queue',
+      log: () => {},
+      signal: ctrl.signal,
+      waitForLock: true,
+      retries: 1,
+    });
+    const tokens = stats.tokens ? `, ${formatTokens(stats.tokens)}` : '';
+    const left = stats.remaining
+      ? `; ${stats.remaining} left for the background run after the commit`
+      : '';
+    say(
+      `clewmap: ${stats.done} described in ${(stats.ms / 1000).toFixed(1)} s${tokens}` +
+        `${stats.aborted ? ' (time limit reached)' : ''}${left}`,
+    );
+    return stats;
+  } catch (e) {
+    say(
+      `clewmap: summaries skipped (${e instanceof Error ? e.message : String(e)}), the commit goes on`,
+    );
+    return null;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+/** `clewmap hook install | uninstall`. */
+export async function hook(
+  root: string,
+  action: 'install' | 'uninstall',
+  opts: { log?: Log; self?: { node: string; bin: string } } = {},
+): Promise<HookChange[]> {
+  const log = opts.log ?? (() => {});
+  let changes: HookChange[];
+  if (action === 'install') {
+    const config = await readConfig(root).catch(() => null);
+    const hooks: HookName[] = [];
+    if (config?.hooks.preCommit !== false) hooks.push('pre-commit');
+    if (config?.hooks.postCommit !== false) hooks.push('post-commit');
+    const self =
+      opts.self ??
+      (process.argv[1] ? { node: process.execPath, bin: path.resolve(process.argv[1]) } : null);
+    changes = await installHooks(root, { hooks, fallback: self });
+  } else {
+    changes = await uninstallHooks(root);
+  }
+  for (const c of changes)
+    log(`${pc.green('✓')} ${c.hook}: ${c.action} (${path.relative(root, c.file)})`);
+  if (!changes.length) log(pc.dim('no clewmap hooks found'));
+  return changes;
 }
 
 export interface StatusResult {
@@ -165,6 +419,7 @@ export interface StatusResult {
   symbols: number;
   withoutSummary: number;
   stale: number;
+  queued: number;
 }
 
 /** `clewmap status`: актуален ли граф и сколько символов ждут описаний. */
@@ -183,6 +438,7 @@ export async function status(root: string, opts: { log?: Log } = {}): Promise<St
       symbols: 0,
       withoutSummary: 0,
       stale: 0,
+      queued: 0,
     };
   }
   const config = await readConfig(root);
@@ -205,13 +461,15 @@ export async function status(root: string, opts: { log?: Log } = {}): Promise<St
     if (m.fileHash !== sha256(await readFile(path.join(root, file), 'utf8'))) changed.push(file);
     for (const s of m.symbols) {
       symbols++;
+      if (!SUMMARIZABLE_KINDS.has(s.kind)) continue;
       if (!s.summary) withoutSummary++;
       else if (s.summary.stale) stale++;
     }
   }
   const removed = [...known].sort();
-  const commitOk = head === null || manifest.lastCommit === head;
-  const upToDate = commitOk && !changed.length && !added.length && !removed.length;
+  // Актуальность — по содержимому файлов: граф, обновлённый в pre-commit, хранит родительский коммит.
+  const upToDate = !changed.length && !added.length && !removed.length;
+  const queued = (await readQueue(root)).items.length;
 
   log(`${upToDate ? pc.green('✓ graph is up to date') : pc.yellow('• graph is out of date')}`);
   log(
@@ -226,8 +484,11 @@ export async function status(root: string, opts: { log?: Log } = {}): Promise<St
   list('changed:', changed);
   list('new:    ', added);
   list('removed:', removed);
-  log(`  symbols:  ${symbols}, without summary ${withoutSummary}, stale ${stale}`);
-  if (!upToDate) log(`${pc.dim('run:')} clewmap build`);
+  log(
+    `  symbols:  ${symbols}, without summary ${withoutSummary}, stale ${stale}, queued ${queued}`,
+  );
+  if (!upToDate) log(`${pc.dim('run:')} clewmap update`);
+  else if (queued) log(`${pc.dim('run:')} clewmap summarize`);
   return {
     upToDate,
     lastCommit: manifest.lastCommit,
@@ -238,5 +499,6 @@ export async function status(root: string, opts: { log?: Log } = {}): Promise<St
     symbols,
     withoutSummary,
     stale,
+    queued,
   };
 }

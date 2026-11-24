@@ -17,8 +17,14 @@ clewmap.config.json              # settings: include/exclude, layers, links, sum
 ```
 
 One JSON per source file keeps diffs small and merge conflicts local: changing `pricing.py` touches only
-`pricing.py.json`. Service files (`.clewmap/.queue.json`, `.clewmap/.lock`, `.clewmap/.cache/`) are
-gitignored by `clewmap init`.
+`pricing.py.json`. Service files are gitignored by `clewmap init`:
+
+| File                    | What it is                                                                     |
+| ----------------------- | ------------------------------------------------------------------------------ |
+| `.clewmap/.queue.json`  | symbols waiting for a summary: `{ id, priority: "high"\|"low", bodyHash, attempts }` |
+| `.clewmap/.lock`        | `{ pid, host, startedAt }` of the running `clewmap summarize`; a dead or 2-hour-old lock is taken over |
+| `.clewmap/.cache/raw/`  | parse cache keyed by file hash, so `clewmap update` re-parses only changed files |
+| `.clewmap/.cache/summarize.log` | log of background summarize runs started by the post-commit hook        |
 
 Only **outgoing** edges are stored. "Who calls X" is computed in memory by reversing them
 (`GraphIndex.calledBy` in `@clewmap/core`), so a new caller never rewrites the callee's file.
@@ -35,8 +41,11 @@ Only **outgoing** edges are stored. "Who calls X" is computed in memory by rever
 }
 ```
 
-`lastCommit` is the `HEAD` the graph was built on (`null` outside git). `updatedAt` changes only when
-some module file actually changed, so a rebuild of unchanged code leaves every byte in place.
+`lastCommit` is the `HEAD` at the moment the graph last changed (`null` outside git). When the pre-commit
+hook updates the graph, that is the parent of the commit that carries it, so freshness is never judged by
+this field: `clewmap status` compares each module's `fileHash` with the file on disk. `updatedAt` and
+`lastCommit` change only when some module file actually changed, so a rebuild of unchanged code (or a
+commit that touches only docs) leaves every byte in place.
 
 ## Module file
 
@@ -164,7 +173,10 @@ request that has no handler in the repository.
 
 ## Summaries and blocks
 
-Both are `null` until the summarizer runs.
+Both are `null` until the summarizer runs. Functions, methods and classes get summaries; module-level
+variables do not. Summaries are written bottom-up (callees before callers), so a caller's prompt already
+contains the descriptions of what it calls. The model sees only the symbol's code, its signature, the names
+and summaries of its direct callees, the file and the layer.
 
 ```json
 "summary": {
@@ -176,12 +188,26 @@ Both are `null` until the summarizer runs.
 }
 ```
 
-A summary is valid while `forBodyHash` equals the symbol's `bodyHash`. `stale: true` means the code is
-the same but a neighbour's signature changed.
+When summaries are written is set by `hooks.summarize` in `clewmap.config.json`:
 
-`blocks` split a long function into meaningful steps for highlighting in the editor. Boundaries always
-come from tree-sitter: `statements` are indices of top-level statements of the body, the model only
-groups them and writes the label.
+| Value | What happens | Trade-off |
+| --- | --- | --- |
+| `"post-commit"` (default) | a detached background process describes the commit's changes after it is made | the commit never waits; summaries land in the working tree and go out with the next commit |
+| `"pre-commit"` | the pre-commit hook describes the staged changes before the commit | summaries are in the same commit; the commit waits for the model, at most `hooks.summarizeTimeout` seconds (120 by default, `null` for no limit) |
+
+When the limit runs out, the call in flight is cancelled, finished summaries still go into the commit and the rest
+stays queued (without counting as a failed attempt) for the post-commit run.
+
+A summary is valid while `forBodyHash` equals the symbol's `bodyHash`; a body change drops it and queues the
+symbol. `stale: true` means the code is the same but the signature of something it calls changed: the old
+text is kept (still mostly right) and the symbol is queued with low priority.
+
+`blocks` split a function longer than `summaries.blocksMinLines` (8 by default) into 2–7 meaningful steps
+for highlighting in the editor. Boundaries always come from tree-sitter: `statements` is the first and last
+index of the top-level statements of the body (comments and the docstring do not count), and `range` is
+computed from those statements, never from the model's answer. The model only groups them and writes
+`label` and `text`. Groups must be consecutive, without gaps or overlaps, and cover every statement;
+otherwise the blocks are dropped and the summary is kept.
 
 ```json
 "blocks": [

@@ -19,6 +19,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@clewmap/core": "workspace:*"
+    "@anthropic-ai/sdk": "^1.13.0",
+    "@clewmap/core": "workspace:*",
+    "@clewmap/indexer": "workspace:*"
   }
 }

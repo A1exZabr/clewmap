@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-import { Command } from 'commander';
+import { Command, InvalidArgumentError } from 'commander';
 import pc from 'picocolors';
-import { build, init, status } from './commands.js';
+import { build, hook, init, status, summarizeCommand, update } from './commands.js';
 
 const program = new Command()
   .name('clewmap')
@@ -14,25 +14,117 @@ const program = new Command()
 const log = (line: string) => console.log(line);
 const root = () => program.opts<{ cwd: string }>().cwd;
 
+function positiveInt(value: string): number {
+  const n = Number(value);
+  if (!Number.isInteger(n) || n <= 0) throw new InvalidArgumentError('expected a positive integer');
+  return n;
+}
+
+/** Общий таймаут команды: по истечении — предупреждение и выход с кодом 1 (хук не добавит .clewmap/). */
+function withTimeout(ms: number | undefined): () => void {
+  if (!ms) return () => {};
+  const timer = setTimeout(() => {
+    console.error(pc.yellow(`clewmap: timed out after ${ms} ms`));
+    process.exit(1);
+  }, ms);
+  timer.unref();
+  return () => clearTimeout(timer);
+}
+
 program
   .command('init')
   .description('create clewmap.config.json and .clewmap/ in this repository')
   .option('--force', 'regenerate the config even if it exists')
-  .action(async (opts: { force?: boolean }) => {
-    await init(root(), { force: opts.force, log });
+  .option('--hooks', 'also install the git hooks (same as clewmap hook install)')
+  .action(async (opts: { force?: boolean; hooks?: boolean }) => {
+    await init(root(), { force: opts.force, hooks: opts.hooks, log });
   });
 
 program
   .command('build')
-  .description('index the whole repository (tree-sitter, no LLM)')
-  .option('--no-summaries', 'skip summaries (the only mode until summaries land)')
-  .action(async () => {
-    await build(root(), { log });
+  .description('index the whole repository, then write summaries for symbols that have none')
+  .option('--no-summaries', 'only build the graph (tree-sitter, no LLM)')
+  .action(async (opts: { summaries: boolean }) => {
+    await build(root(), { log, summaries: opts.summaries });
+  });
+
+program
+  .command('update')
+  .description(
+    're-index changed files, carry summaries over and queue the rest (never calls an LLM)',
+  )
+  .option('--staged', 'index what is staged for commit (used by the pre-commit hook)')
+  .option('--since <ref>', 'take renames from git diff <ref>')
+  .option('--files <files...>', 'files that changed (others are re-checked by hash anyway)')
+  .option('-q, --quiet', 'print only what changed')
+  .option('--timeout <ms>', 'give up after <ms> milliseconds', positiveInt)
+  .option(
+    '--hook <name>',
+    'called from a git hook: with "pre-commit", then write summaries if hooks.summarize is "pre-commit" (outside --timeout)',
+  )
+  .action(
+    async (opts: {
+      hook?: string;
+      staged?: boolean;
+      since?: string;
+      files?: string[];
+      quiet?: boolean;
+      timeout?: number;
+    }) => {
+      const cancel = withTimeout(opts.timeout);
+      const mode = opts.staged
+        ? ({ kind: 'staged' } as const)
+        : opts.since
+          ? ({ kind: 'since', ref: opts.since } as const)
+          : opts.files
+            ? ({ kind: 'files', files: opts.files } as const)
+            : ({ kind: 'worktree' } as const);
+      await update(root(), { mode, quiet: opts.quiet, log });
+      cancel();
+      // Описания в том же процессе: в режиме post-commit это ничего не стоит, лишний запуск node не нужен.
+      if (opts.hook === 'pre-commit') await summarizeCommand(root(), { hook: 'pre-commit' });
+    },
+  );
+
+program
+  .command('summarize')
+  .description('write summaries for the queued symbols')
+  .option('--all', 'every symbol without an up-to-date summary')
+  .option('--stale', 'only summaries marked stale')
+  .option('--limit <n>', 'describe at most <n> symbols', positiveInt)
+  .option('--background', 'run in a detached process, log to .clewmap/.cache/summarize.log')
+  .option('-q, --quiet', 'no output')
+  .action(
+    async (opts: {
+      all?: boolean;
+      stale?: boolean;
+      limit?: number;
+      background?: boolean;
+      quiet?: boolean;
+    }) => {
+      await summarizeCommand(root(), {
+        mode: opts.all ? 'all' : opts.stale ? 'stale' : 'queue',
+        limit: opts.limit,
+        background: opts.background,
+        quiet: opts.quiet,
+        log: opts.quiet ? () => {} : log,
+      });
+    },
+  );
+
+program
+  .command('hook')
+  .description('install or remove the git hooks (pre-commit: update, post-commit: summarize)')
+  .argument('<action>', 'install | uninstall')
+  .action(async (action: string) => {
+    if (action !== 'install' && action !== 'uninstall')
+      throw new InvalidArgumentError('expected install or uninstall');
+    await hook(root(), action, { log });
   });
 
 program
   .command('status')
-  .description('show whether the graph matches the code and HEAD')
+  .description('show whether the graph matches the code and how many summaries are pending')
   .action(async () => {
     await status(root(), { log });
   });

@@ -35,6 +35,13 @@ export const ConfigSchema = z.object({
     .object({
       preCommit: z.boolean().default(true),
       postCommit: z.boolean().default(true),
+      /**
+       * Когда писать описания. post-commit — в фоне после коммита, коммит не ждёт, описания уезжают
+       * со следующим коммитом. pre-commit — до коммита, они уезжают в том же коммите, но коммит ждёт модель.
+       */
+      summarize: z.enum(['post-commit', 'pre-commit']).default('post-commit'),
+      /** Сколько секунд pre-commit ждёт описания; null — сколько нужно. Не успел — остальное доделает фон. */
+      summarizeTimeout: z.number().positive().nullable().default(120),
     })
     .prefault({}),
 });
