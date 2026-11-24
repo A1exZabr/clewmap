@@ -45,3 +45,4 @@ export {
   stagedChanges,
   type NameStatus,
 } from './git.js';
+export { graphStatus, type GraphStatus } from './status.js';

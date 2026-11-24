@@ -9,27 +9,24 @@ import {
   DEFAULT_LAYERS,
   FORMAT_VERSION,
   GENERATOR,
-  listModuleFiles,
   parseConfig,
   readConfig,
   readManifest,
-  readModule,
   readQueue,
-  sha256,
   writeManifest,
   type Config,
   type Language,
 } from '@clewmap/core';
 import {
-  SUMMARIZABLE_KINDS,
   buildGraph,
   gitBusy,
-  gitHead,
+  graphStatus,
   grammarFor,
   languageOf,
   layerForDir,
   scanFiles,
   updateGraph,
+  type GraphStatus,
   type SyncResult,
   type UpdateMode,
 } from '@clewmap/indexer';
@@ -260,6 +257,9 @@ export interface SummarizeCliOptions {
   self?: { node: string; bin: string };
   /** Вызов из хука: pre-commit описывает, только если hooks.summarize = "pre-commit". */
   hook?: HookName;
+  /** Провайдер и модель поверх clewmap.config.json (для CI: --provider anthropic). */
+  providerName?: string;
+  model?: string;
 }
 
 export function summarizeLogPath(root: string): string {
@@ -300,6 +300,8 @@ export async function summarizeCommand(
     if (mode === 'all') args.push('--all');
     if (mode === 'stale') args.push('--stale');
     if (opts.limit) args.push('--limit', String(opts.limit));
+    if (opts.providerName) args.push('--provider', opts.providerName);
+    if (opts.model) args.push('--model', opts.model);
     const child = spawn(self.node, args, {
       cwd: root,
       detached: true,
@@ -314,7 +316,15 @@ export async function summarizeCommand(
       );
     return { background: true, pid: child.pid };
   }
-  const config: Config = await readConfig(root);
+  const base: Config = await readConfig(root);
+  const config: Config = {
+    ...base,
+    summaries: {
+      ...base.summaries,
+      ...(opts.providerName ? { provider: opts.providerName } : {}),
+      ...(opts.model ? { model: opts.model } : {}),
+    },
+  };
   const stats = await runSummaries(root, {
     provider: opts.provider ?? createProvider(config),
     config,
@@ -409,68 +419,20 @@ export async function hook(
   return changes;
 }
 
-export interface StatusResult {
-  upToDate: boolean;
-  lastCommit: string | null;
-  head: string | null;
-  changed: string[];
-  added: string[];
-  removed: string[];
-  symbols: number;
-  withoutSummary: number;
-  stale: number;
-  queued: number;
-}
+export type StatusResult = Omit<GraphStatus, 'initialized'>;
 
 /** `clewmap status`: актуален ли граф и сколько символов ждут описаний. */
 export async function status(root: string, opts: { log?: Log } = {}): Promise<StatusResult> {
   const log = opts.log ?? (() => {});
-  const manifest = await readManifest(root);
-  if (!manifest) {
+  const st = await graphStatus(root);
+  const result: StatusResult = { ...st };
+  delete (result as Partial<GraphStatus>).initialized;
+  if (!st.initialized) {
     log(`${pc.red('✗')} no .clewmap/ here — run ${pc.bold('clewmap init')} first`);
-    return {
-      upToDate: false,
-      lastCommit: null,
-      head: null,
-      changed: [],
-      added: [],
-      removed: [],
-      symbols: 0,
-      withoutSummary: 0,
-      stale: 0,
-      queued: 0,
-    };
+    return result;
   }
-  const config = await readConfig(root);
-  const head = await gitHead(root);
-  const files = await scanFiles(root, config);
-  const known = new Set(await listModuleFiles(root));
-  const changed: string[] = [];
-  const added: string[] = [];
-  let symbols = 0;
-  let withoutSummary = 0;
-  let stale = 0;
-  for (const file of files) {
-    if (!known.has(file)) {
-      added.push(file);
-      continue;
-    }
-    known.delete(file);
-    const m = await readModule(root, file);
-    if (!m) continue;
-    if (m.fileHash !== sha256(await readFile(path.join(root, file), 'utf8'))) changed.push(file);
-    for (const s of m.symbols) {
-      symbols++;
-      if (!SUMMARIZABLE_KINDS.has(s.kind)) continue;
-      if (!s.summary) withoutSummary++;
-      else if (s.summary.stale) stale++;
-    }
-  }
-  const removed = [...known].sort();
-  // Актуальность — по содержимому файлов: граф, обновлённый в pre-commit, хранит родительский коммит.
-  const upToDate = !changed.length && !added.length && !removed.length;
-  const queued = (await readQueue(root)).items.length;
-
+  const { upToDate, changed, added, removed, symbols, withoutSummary, stale, queued, head } = st;
+  const manifest = { lastCommit: st.lastCommit };
   log(`${upToDate ? pc.green('✓ graph is up to date') : pc.yellow('• graph is out of date')}`);
   log(
     `  commit:   ${manifest.lastCommit?.slice(0, 8) ?? 'none'}${head ? ` (HEAD ${head.slice(0, 8)})` : ''}`,
@@ -489,16 +451,5 @@ export async function status(root: string, opts: { log?: Log } = {}): Promise<St
   );
   if (!upToDate) log(`${pc.dim('run:')} clewmap update`);
   else if (queued) log(`${pc.dim('run:')} clewmap summarize`);
-  return {
-    upToDate,
-    lastCommit: manifest.lastCommit,
-    head,
-    changed,
-    added,
-    removed,
-    symbols,
-    withoutSummary,
-    stale,
-    queued,
-  };
+  return result;
 }

@@ -13,7 +13,7 @@ import { blockHover, symbolHover, type LastCommit } from './hover.js';
 import { changesBetween, impactView } from './impact.js';
 import { lensParts } from './lens.js';
 import { exactModel, locateInText, nameLine, type DocModel } from './locate.js';
-import { searchGraph } from './search.js';
+import { searchGraph } from '@clewmap/core';
 
 const FIXTURES = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../fixtures');
 const ORDER = 'src/bot/handlers/order.py';

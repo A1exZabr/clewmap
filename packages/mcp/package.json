@@ -20,6 +20,8 @@
   },
   "dependencies": {
     "@clewmap/core": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.32.2"
+    "@clewmap/indexer": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "zod": "^4"
   }
 }

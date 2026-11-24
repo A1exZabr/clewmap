@@ -1,0 +1,129 @@
+name: Clewmap
+description: Keep the .clewmap/ code map in sync with the code on every push, and optionally write summaries with the Anthropic API.
+author: Alexander Zabrodin
+branding:
+  icon: share-2
+  color: purple
+
+inputs:
+  version:
+    description: Version of the clewmap npm package.
+    default: latest
+  cli:
+    description: Command that runs Clewmap. Empty means `npx -y clewmap@<version>`. Set it to use a local install, e.g. `node ./node_modules/.bin/clewmap`.
+    default: ''
+  since:
+    description: Commit to diff against (renames are taken from it). Defaults to the commit before the push; a full rebuild runs when it is missing.
+    default: ${{ github.event.before }}
+  summaries:
+    description: Also write summaries for new and changed code (needs anthropic-api-key).
+    default: 'false'
+  anthropic-api-key:
+    description: Anthropic API key, from a repository secret. Used only when summaries is true.
+    default: ''
+  model:
+    description: Model for summaries. Empty means the default of the anthropic provider.
+    default: ''
+  working-directory:
+    description: Folder with clewmap.config.json, relative to the repository root.
+    default: .
+  commit-message:
+    description: Message of the bot commit. Keep [skip ci] so the commit does not start the workflow again.
+    default: 'chore(clewmap): update the code map [skip ci]'
+  checkout:
+    description: Check the repository out (with full history). Set to false if the workflow already did it.
+    default: 'true'
+  token:
+    description: Token used to push the bot commit.
+    default: ${{ github.token }}
+
+outputs:
+  committed:
+    description: '"true" when the action committed changes to .clewmap/.'
+    value: ${{ steps.commit.outputs.committed }}
+
+runs:
+  using: composite
+  steps:
+    - if: inputs.checkout == 'true'
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ inputs.token }}
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+
+    - name: Update the graph
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        CLEWMAP_CLI: ${{ inputs.cli }}
+        CLEWMAP_VERSION: ${{ inputs.version }}
+        CLEWMAP_SINCE: ${{ inputs.since }}
+      run: |
+        set -euo pipefail
+        CLI="${CLEWMAP_CLI:-npx -y clewmap@${CLEWMAP_VERSION}}"
+        if [ ! -f .clewmap/manifest.json ]; then
+          echo "::notice::No .clewmap/ yet: creating the config and building the graph"
+          $CLI init
+          $CLI build --no-summaries
+        elif [ -n "${CLEWMAP_SINCE}" ] && [ "${CLEWMAP_SINCE}" != "0000000000000000000000000000000000000000" ] \
+          && git cat-file -e "${CLEWMAP_SINCE}^{commit}" 2>/dev/null; then
+          $CLI update --since "${CLEWMAP_SINCE}"
+        else
+          echo "::notice::No previous commit to diff against: rebuilding the whole graph"
+          $CLI build --no-summaries
+        fi
+
+    - name: Write summaries
+      if: inputs.summaries == 'true'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        CLEWMAP_CLI: ${{ inputs.cli }}
+        CLEWMAP_VERSION: ${{ inputs.version }}
+        CLEWMAP_MODEL: ${{ inputs.model }}
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+      run: |
+        set -euo pipefail
+        if [ -z "${ANTHROPIC_API_KEY}" ]; then
+          echo "::warning::summaries is true but anthropic-api-key is empty: skipping summaries"
+          exit 0
+        fi
+        CLI="${CLEWMAP_CLI:-npx -y clewmap@${CLEWMAP_VERSION}}"
+        $CLI summarize --provider anthropic ${CLEWMAP_MODEL:+--model "$CLEWMAP_MODEL"}
+
+    - name: Commit .clewmap/
+      id: commit
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        CLEWMAP_SKIP: '1'
+        MESSAGE: ${{ inputs.commit-message }}
+        BRANCH: ${{ github.head_ref || github.ref_name }}
+        # Имя бота для коммита и для rebase при повторной попытке: на раннере git не настроен.
+        GIT_AUTHOR_NAME: clewmap[bot]
+        GIT_AUTHOR_EMAIL: clewmap[bot]@users.noreply.github.com
+        GIT_COMMITTER_NAME: clewmap[bot]
+        GIT_COMMITTER_EMAIL: clewmap[bot]@users.noreply.github.com
+      run: |
+        set -euo pipefail
+        git add -A -- .clewmap clewmap.config.json .gitignore 2>/dev/null || git add -A -- .clewmap
+        if git diff --cached --quiet; then
+          echo "The code map is already up to date."
+          echo "committed=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        git commit --no-verify -m "$MESSAGE"
+        for attempt in 1 2 3; do
+          if git push origin "HEAD:${BRANCH}"; then
+            echo "committed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "::notice::Push was rejected (attempt ${attempt}), rebasing on the new ${BRANCH}"
+          git pull --rebase origin "${BRANCH}"
+        done
+        echo "::error::Could not push the updated code map"
+        exit 1

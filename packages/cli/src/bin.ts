@@ -94,8 +94,12 @@ program
   .option('--limit <n>', 'describe at most <n> symbols', positiveInt)
   .option('--background', 'run in a detached process, log to .clewmap/.cache/summarize.log')
   .option('-q, --quiet', 'no output')
+  .option('--provider <name>', 'claude-cli, anthropic or ollama (overrides clewmap.config.json)')
+  .option('--model <model>', 'model id (overrides clewmap.config.json)')
   .action(
     async (opts: {
+      provider?: string;
+      model?: string;
       all?: boolean;
       stale?: boolean;
       limit?: number;
@@ -108,6 +112,8 @@ program
         background: opts.background,
         quiet: opts.quiet,
         log: opts.quiet ? () => {} : log,
+        providerName: opts.provider,
+        model: opts.model,
       });
     },
   );
@@ -120,6 +126,16 @@ program
     if (action !== 'install' && action !== 'uninstall')
       throw new InvalidArgumentError('expected install or uninstall');
     await hook(root(), action, { log });
+  });
+
+program
+  .command('mcp')
+  .description('run the MCP server over stdio (for Claude Code and other agents)')
+  .action(async () => {
+    // Без явного --cwd корень берём из CLAUDE_PROJECT_DIR (его задаёт Claude Code) или текущей папки.
+    const explicit = program.getOptionValueSource('cwd') === 'cli';
+    const { runStdioServer } = await import('@clewmap/mcp');
+    await runStdioServer(explicit ? root() : undefined);
   });
 
 program

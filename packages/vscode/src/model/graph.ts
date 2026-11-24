@@ -1,4 +1,7 @@
+import { qualifiedOf, validSummary } from '@clewmap/core';
 import type { CallEdge, Config, GraphIndex, IncomingEdge, SymbolNode } from '@clewmap/core';
+
+export { qualifiedOf, validSummary };
 import { isExternalSdk } from '@clewmap/indexer';
 import { symbolAtLine, type DocModel, type LocatedSymbol } from './locate.js';
 
@@ -29,13 +32,6 @@ export function layersOf(config: Config | null): Map<string, LayerInfo> {
   for (const [key, l] of Object.entries(DEFAULT_LAYER_STYLE))
     if (!out.has(key)) out.set(key, { key, ...l });
   return out;
-}
-
-/** "src/services/pricing.py#Cart.total~2" → "Cart.total". */
-export function qualifiedOf(id: string): string {
-  const hash = id.indexOf('#');
-  const q = hash === -1 ? id : id.slice(hash + 1);
-  return q.replace(/~\d+$/, '');
 }
 
 /** Короткое имя для подписи: последний сегмент. */
@@ -75,11 +71,6 @@ export function edgeLayer(edge: CallEdge, index: GraphIndex): string | null {
   if (edge.resolved) return index.get(edge.target)?.layer ?? null;
   if (isExternalSdk(edge.target)) return 'external';
   return null;
-}
-
-/** Описание актуально: написано для этого кода. */
-export function validSummary(node: SymbolNode): string | null {
-  return node.summary && node.summary.forBodyHash === node.bodyHash ? node.summary.text : null;
 }
 
 export function truncate(text: string, max: number): string {

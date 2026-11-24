@@ -5,7 +5,7 @@ import type { Explainer } from '../explainer.js';
 import { buildFlow, type Flow } from '../model/flow.js';
 import { displayName, validSummary } from '../model/graph.js';
 import { impactView } from '../model/impact.js';
-import { searchGraph } from '../model/search.js';
+import { searchGraph } from '@clewmap/core';
 import type { GraphStore } from '../store.js';
 import { t, type Workspace } from '../workspace.js';
 import type { FromPanel, NeighborsVM, NodeVM, PanelState, Tab, ToPanel } from './protocol.js';

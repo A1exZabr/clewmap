@@ -348,8 +348,8 @@ Summary = {
 **Результат фазы:** Claude Code через MCP пользуется графом; плагин ставится одной командой; граф в `main` обновляется в CI.
 
 ### 4.1 MCP-сервер (`packages/mcp`)
-- [ ] Создай `src/server.ts` на `@modelcontextprotocol/sdk`, транспорт stdio; корень репо из `cwd` (поиск `.clewmap/` вверх до корня git); запуск через `clewmap mcp` (подкоманда CLI)
-- [ ] Инструменты (входы валидировать zod, ответы компактные, без огромных дампов):
+- [x] Создай `src/server.ts` на `@modelcontextprotocol/sdk`, транспорт stdio; корень репо из `cwd` (поиск `.clewmap/` вверх до корня git); запуск через `clewmap mcp` (подкоманда CLI) — корень берётся из `CLAUDE_PROJECT_DIR` (его задаёт Claude Code плагинам), иначе из `cwd`; у сервера есть `instructions` с теми же правилами, что в навыке
+- [x] Инструменты (входы валидировать zod, ответы компактные, без огромных дампов):
   - `clewmap_get_symbol({ name | id })` → сигнатура, файл:строка, слой, описание, stale
   - `clewmap_find_callers({ id, depth?=1 })`
   - `clewmap_find_callees({ id, depth?=1 })`
@@ -358,21 +358,21 @@ Summary = {
   - `clewmap_module_summary({ file })` → описание модуля и список символов
   - `clewmap_status()` → актуальность графа, число stale и без описаний
   - `clewmap_update({ files? })` → запустить инкрементальное обновление связей (без LLM)
-- [ ] Перезагрузка индекса при изменении файлов `.clewmap/` (watcher)
-- [ ] Тесты: вызов каждого инструмента на фикстуре через in-memory транспорт
+- [x] Перезагрузка индекса при изменении файлов `.clewmap/` (watcher) — `fs.watch` с дебаунсом 300 мс; кэш, очередь и блокировка индекс не трогают
+- [x] Тесты: вызов каждого инструмента на фикстуре через in-memory транспорт — плюс внешнее изменение графа без перезапуска и настоящий `clewmap mcp` по stdio
 
 ### 4.2 Плагин Claude Code (`claude-plugin/`)
-- [ ] Создай `.claude-plugin/plugin.json` (имя, версия, описание, автор, лицензия MIT) и marketplace-манифест в корне репо, чтобы работало `/plugin marketplace add <owner>/clewmap`
-- [ ] Создай `.mcp.json`: сервер `clewmap`, команда `npx -y clewmap mcp`
-- [ ] Создай `skills/clewmap/SKILL.md`: перед изменением функции вызвать `clewmap_impact` и `clewmap_find_callers`; при знакомстве с проектом начинать с `clewmap_search` и `clewmap_module_summary`, а не с grep по всем файлам; после правок не трогать `.clewmap/` вручную (хуки обновят сами)
-- [ ] Создай команды: `commands/clewmap-init.md` (init + build + summarize + установка хуков), `commands/clewmap-explain.md` (подробное объяснение символа)
-- [ ] Проверь установку плагина в чистом Claude Code и вызов инструментов
+- [x] Создай `.claude-plugin/plugin.json` (имя, версия, описание, автор, лицензия MIT) и marketplace-манифест в корне репо, чтобы работало `/plugin marketplace add <owner>/clewmap` — плагин в `claude-plugin/`, маркетплейс `clewmap` в корне: `/plugin install clewmap --marketplace A1exZabr/clewmap`; `claude plugin validate` проходит для обоих
+- [x] Создай `.mcp.json`: сервер `clewmap`, команда `npx -y clewmap mcp` — ключ сервера `graph`, а не `clewmap`: иначе инструменты назывались бы `mcp__plugin_clewmap_clewmap__clewmap_…`
+- [x] Создай `skills/clewmap/SKILL.md`: перед изменением функции вызвать `clewmap_impact` и `clewmap_find_callers`; при знакомстве с проектом начинать с `clewmap_search` и `clewmap_module_summary`, а не с grep по всем файлам; после правок не трогать `.clewmap/` вручную (хуки обновят сами)
+- [x] Создай команды: `commands/clewmap-init.md` (init + build + summarize + установка хуков), `commands/clewmap-explain.md` (подробное объяснение символа) — в Claude Code они вызываются как `/clewmap:clewmap-init` и `/clewmap:clewmap-explain`
+- [x] Проверь установку плагина в чистом Claude Code и вызов инструментов — проверено через `claude --plugin-dir` с копией плагина, где сервер запускается из локальной сборки: пакет `clewmap` на npm пока заглушка, настоящий выйдет в фазе 5
 
 ### 4.3 GitHub Action (`action/`)
-- [ ] Создай `action.yml` (composite): checkout, Node, `npx clewmap update --since ${{ github.event.before }}`; описания опционально (секрет `ANTHROPIC_API_KEY`, провайдер `anthropic-api`); коммит изменений `.clewmap/` ботом с `[skip ci]`
-- [ ] Пример workflow в `docs/github-action.md`
+- [x] Создай `action.yml` (composite): checkout, Node, `npx clewmap update --since ${{ github.event.before }}`; описания опционально (секрет `ANTHROPIC_API_KEY`, провайдер `anthropic-api`); коммит изменений `.clewmap/` ботом с `[skip ci]` — провайдер называется `anthropic` (в плане `anthropic-api`), для этого у `summarize` появились `--provider` и `--model`; при первом запуске без `.clewmap/` делает `init` и полную сборку; push с повтором через rebase; имя бота через переменные окружения (на раннере git не настроен). Шаги проверены тестом на настоящем git с bare-репозиторием (`packages/cli/src/action.test.ts`)
+- [x] Пример workflow в `docs/github-action.md`
 
-**✅ Проверка фазы 4:** в Claude Code с установленным плагином на `fixtures/py-bot` спросить «что сломается, если поменять apply_promo?» — агент вызывает `clewmap_impact` и называет `create_order` и `preview_cart`. Action на тестовом репо после пуша коммитит обновлённый `.clewmap/`.
+**✅ Проверка фазы 4** *(24.11.2026: Claude Code с плагином на копии py-bot сам вызвал `clewmap_impact` и `clewmap_find_callers` и назвал `create_order`, `preview_cart`, `api_checkout` и кнопку «Оформить»; Action проверен локально на настоящем git. Прогон на GitHub ждёт публикации пакета на npm и открытия репозитория в фазе 5)*: в Claude Code с установленным плагином на `fixtures/py-bot` спросить «что сломается, если поменять apply_promo?» — агент вызывает `clewmap_impact` и называет `create_order` и `preview_cart`. Action на тестовом репо после пуша коммитит обновлённый `.clewmap/`.
 
 ---
 

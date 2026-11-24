@@ -1,0 +1,12 @@
+{
+  "name": "clewmap",
+  "description": "Clewmap: a living code map for Claude Code — call graph, impact of a change and plain-language summaries of every function.",
+  "owner": { "name": "Alexander Zabrodin", "url": "https://github.com/A1exZabr" },
+  "plugins": [
+    {
+      "name": "clewmap",
+      "source": "./claude-plugin",
+      "description": "MCP tools over the .clewmap/ graph (impact, callers, search), a skill that tells Claude to check impact before editing, and /clewmap:clewmap-init and /clewmap:clewmap-explain."
+    }
+  ]
+}

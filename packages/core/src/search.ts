@@ -1,5 +1,17 @@
-import type { GraphIndex, SymbolNode } from '@clewmap/core';
-import { qualifiedOf, validSummary } from './graph.js';
+import type { GraphIndex } from './graph-index.js';
+import type { SymbolNode } from './schema.js';
+
+/** "src/x.py#Cart.total~2" → "Cart.total". */
+export function qualifiedOf(id: string): string {
+  const hash = id.indexOf('#');
+  const q = hash === -1 ? id : id.slice(hash + 1);
+  return q.replace(/~\d+$/, '');
+}
+
+/** Описание актуально: написано для этого кода. */
+export function validSummary(node: SymbolNode): string | null {
+  return node.summary && node.summary.forBodyHash === node.bodyHash ? node.summary.text : null;
+}
 
 export interface SearchHit {
   id: string;
