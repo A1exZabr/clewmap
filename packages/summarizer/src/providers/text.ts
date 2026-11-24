@@ -1,4 +1,5 @@
-import { buildPrompt, parseResponse } from '../prompt.js';
+import { EXPLAIN_SYSTEM_PROMPT, buildExplainPrompt, type ExplainContext } from '../explain.js';
+import { SYSTEM_PROMPT, buildPrompt, parseResponse } from '../prompt.js';
 import type {
   SummarizeCallOptions,
   SummaryProvider,
@@ -15,7 +16,12 @@ export abstract class TextProvider implements SummaryProvider {
 
   constructor(protected readonly language: string) {}
 
-  protected abstract complete(prompt: string, signal?: AbortSignal): Promise<string>;
+  /** Один запрос к модели. system — системный промпт (описания или «объяснить подробнее»). */
+  protected abstract complete(
+    prompt: string,
+    signal?: AbortSignal,
+    system?: string,
+  ): Promise<string>;
 
   protected addUsage(input: number | undefined, output: number | undefined): void {
     this.usage.input += input ?? 0;
@@ -28,8 +34,17 @@ export abstract class TextProvider implements SummaryProvider {
   ): Promise<SummaryResult[]> {
     if (!batch.length) return [];
     return parseResponse(
-      await this.complete(buildPrompt(batch, this.language), opts.signal),
+      await this.complete(buildPrompt(batch, this.language), opts.signal, SYSTEM_PROMPT),
       batch,
     );
+  }
+
+  async explain(ctx: ExplainContext, opts: SummarizeCallOptions = {}): Promise<string> {
+    const text = await this.complete(
+      buildExplainPrompt(ctx, this.language),
+      opts.signal,
+      EXPLAIN_SYSTEM_PROMPT,
+    );
+    return text.trim();
   }
 }

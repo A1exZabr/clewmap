@@ -28,13 +28,17 @@ export class OllamaProvider extends TextProvider {
     this.timeoutMs = opts.timeoutMs ?? 300_000;
   }
 
-  protected async complete(prompt: string, signal?: AbortSignal): Promise<string> {
+  protected async complete(
+    prompt: string,
+    signal?: AbortSignal,
+    system: string = SYSTEM_PROMPT,
+  ): Promise<string> {
     let res: Response;
     try {
       res = await fetch(`${this.host}/api/generate`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ model: this.model, system: SYSTEM_PROMPT, prompt, stream: false }),
+        body: JSON.stringify({ model: this.model, system, prompt, stream: false }),
         signal: signal
           ? AbortSignal.any([signal, AbortSignal.timeout(this.timeoutMs)])
           : AbortSignal.timeout(this.timeoutMs),

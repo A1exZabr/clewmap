@@ -1,17 +1,254 @@
 {
-  "name": "@clewmap/vscode",
+  "name": "clewmap-vscode",
   "displayName": "Clewmap",
-  "version": "0.0.0",
+  "description": "%description%",
+  "version": "0.1.0",
+  "publisher": "clewmap",
+  "license": "MIT",
   "private": true,
+  "icon": "media/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/A1exZabr/clewmap"
+  },
+  "categories": [
+    "Visualization",
+    "Programming Languages",
+    "Other"
+  ],
+  "keywords": [
+    "code map",
+    "call graph",
+    "codelens",
+    "explain code",
+    "onboarding"
+  ],
   "main": "./dist/extension.js",
   "engines": {
     "vscode": "^1.90.0"
   },
+  "activationEvents": [
+    "workspaceContains:.clewmap/manifest.json",
+    "onView:clewmap.panel"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "clewmap.showCallers",
+        "title": "%command.showCallers%",
+        "category": "Clewmap"
+      },
+      {
+        "command": "clewmap.showCallees",
+        "title": "%command.showCallees%",
+        "category": "Clewmap"
+      },
+      {
+        "command": "clewmap.showFlow",
+        "title": "%command.showFlow%",
+        "category": "Clewmap"
+      },
+      {
+        "command": "clewmap.flowBack",
+        "title": "%command.flowBack%",
+        "category": "Clewmap"
+      },
+      {
+        "command": "clewmap.flowForward",
+        "title": "%command.flowForward%",
+        "category": "Clewmap"
+      },
+      {
+        "command": "clewmap.explainDeeper",
+        "title": "%command.explainDeeper%",
+        "category": "Clewmap"
+      },
+      {
+        "command": "clewmap.openOnGraph",
+        "title": "%command.openOnGraph%",
+        "category": "Clewmap"
+      },
+      {
+        "command": "clewmap.openPanel",
+        "title": "%command.openPanel%",
+        "category": "Clewmap"
+      },
+      {
+        "command": "clewmap.reload",
+        "title": "%command.reload%",
+        "category": "Clewmap"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "clewmap.flowBack",
+        "key": "alt+[",
+        "when": "editorTextFocus && clewmap.flowActive"
+      },
+      {
+        "command": "clewmap.flowForward",
+        "key": "alt+]",
+        "when": "editorTextFocus && clewmap.flowActive"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "clewmap.showFlow",
+          "when": "clewmap.active",
+          "group": "navigation@90"
+        },
+        {
+          "command": "clewmap.explainDeeper",
+          "when": "clewmap.active",
+          "group": "navigation@91"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "clewmap.flowBack",
+          "when": "clewmap.flowActive"
+        },
+        {
+          "command": "clewmap.flowForward",
+          "when": "clewmap.flowActive"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "clewmap",
+          "title": "Clewmap",
+          "icon": "media/activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "clewmap": [
+        {
+          "type": "webview",
+          "id": "clewmap.panel",
+          "name": "%view.panel%"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Clewmap",
+      "properties": {
+        "clewmap.codeLens.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.codeLens.enabled%"
+        },
+        "clewmap.hover.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.hover.enabled%"
+        },
+        "clewmap.layerStripes.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.layerStripes.enabled%"
+        },
+        "clewmap.blocks.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.blocks.enabled%"
+        },
+        "clewmap.blocks.style": {
+          "type": "string",
+          "enum": [
+            "both",
+            "tint",
+            "label"
+          ],
+          "enumDescriptions": [
+            "%config.blocks.style.0%",
+            "%config.blocks.style.1%",
+            "%config.blocks.style.2%"
+          ],
+          "default": "both",
+          "description": "%config.blocks.style%"
+        },
+        "clewmap.summaryLanguage": {
+          "type": "string",
+          "default": "",
+          "description": "%config.summaryLanguage%"
+        }
+      }
+    },
+    "colors": [
+      {
+        "id": "clewmap.blockTintA",
+        "description": "%color.blockTintA%",
+        "defaults": {
+          "dark": "#ffffff0a",
+          "light": "#0000000a",
+          "highContrast": "#ffffff14",
+          "highContrastLight": "#00000014"
+        }
+      },
+      {
+        "id": "clewmap.blockTintB",
+        "description": "%color.blockTintB%",
+        "defaults": {
+          "dark": "#ffffff03",
+          "light": "#00000003",
+          "highContrast": "#00000000",
+          "highContrastLight": "#00000000"
+        }
+      },
+      {
+        "id": "clewmap.blockSeparator",
+        "description": "%color.blockSeparator%",
+        "defaults": {
+          "dark": "#ffffff1f",
+          "light": "#0000001f",
+          "highContrast": "#ffffff66",
+          "highContrastLight": "#00000066"
+        }
+      },
+      {
+        "id": "clewmap.blockLabel",
+        "description": "%color.blockLabel%",
+        "defaults": {
+          "dark": "#8b8d98",
+          "light": "#7a7c86",
+          "highContrast": "#c0c0c0",
+          "highContrastLight": "#555555"
+        }
+      },
+      {
+        "id": "clewmap.changedBackground",
+        "description": "%color.changedBackground%",
+        "defaults": {
+          "dark": "#f2a65a14",
+          "light": "#f2a65a24",
+          "highContrast": "#f2a65a33",
+          "highContrastLight": "#f2a65a33"
+        }
+      }
+    ]
+  },
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --platform=node --format=cjs --target=node20 --external:vscode --outfile=dist/extension.js",
-    "typecheck": "tsc --noEmit"
+    "build": "node esbuild.mjs",
+    "dev": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "test:vscode": "node esbuild.mjs && node dist/test/run.js",
+    "package": "node esbuild.mjs --production --vsix"
   },
   "dependencies": {
-    "@clewmap/core": "workspace:*"
-  }
+    "@clewmap/core": "workspace:*",
+    "@clewmap/indexer": "workspace:*",
+    "@clewmap/summarizer": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/vscode": "~1.90.0",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^4.1.1",
+    "cytoscape": "^3.35.0",
+    "preact": "^11.2.0"
+  },
+  "l10n": "./l10n"
 }

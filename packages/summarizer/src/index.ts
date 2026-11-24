@@ -1,5 +1,11 @@
 export * from './types.js';
 export {
+  EXPLAIN_SYSTEM_PROMPT,
+  buildExplainPrompt,
+  type ExplainContext,
+  type ExplainNeighbor,
+} from './explain.js';
+export {
   buildPrompt,
   parseResponse,
   validateBlocks,

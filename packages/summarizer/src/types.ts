@@ -1,3 +1,4 @@
+import type { ExplainContext } from './explain.js';
 import type { Entry, SymbolKind } from '@clewmap/core';
 
 /** Вызываемый символ в контексте запроса: имя и уже готовое описание (1 шаг по графу). */
@@ -66,6 +67,8 @@ export interface SummaryProvider {
     batch: readonly SummaryRequest[],
     opts?: SummarizeCallOptions,
   ): Promise<SummaryResult[]>;
+  /** «Объяснить подробнее»: развёрнутый текст в Markdown по узкому контексту. */
+  explain?(ctx: ExplainContext, opts?: SummarizeCallOptions): Promise<string>;
 }
 
 /** Вызов отменён по лимиту времени: задачи остаются в очереди без штрафа. */

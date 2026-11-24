@@ -25,6 +25,7 @@ One JSON per source file keeps diffs small and merge conflicts local: changing `
 | `.clewmap/.lock`        | `{ pid, host, startedAt }` of the running `clewmap summarize`; a dead or 2-hour-old lock is taken over |
 | `.clewmap/.cache/raw/`  | parse cache keyed by file hash, so `clewmap update` re-parses only changed files |
 | `.clewmap/.cache/summarize.log` | log of background summarize runs started by the post-commit hook        |
+| `.clewmap/.cache/explanations/` | “Explain in more depth” answers from the editor, keyed by symbol and `bodyHash` |
 
 Only **outgoing** edges are stored. "Who calls X" is computed in memory by reversing them
 (`GraphIndex.calledBy` in `@clewmap/core`), so a new caller never rewrites the callee's file.

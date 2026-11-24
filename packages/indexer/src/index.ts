@@ -1,4 +1,4 @@
-export { initParser, parse, type SupportedLanguage } from './parser.js';
+export { WASM_FILES, initParser, parse, setWasmDir, type SupportedLanguage } from './parser.js';
 export type {
   LanguageAdapter,
   RawCall,

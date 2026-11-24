@@ -49,7 +49,11 @@ export class ClaudeCliProvider extends TextProvider {
     return this.requestedModel ?? this.lastModel ?? 'claude-cli';
   }
 
-  protected complete(prompt: string, signal?: AbortSignal): Promise<string> {
+  protected complete(
+    prompt: string,
+    signal?: AbortSignal,
+    system: string = SYSTEM_PROMPT,
+  ): Promise<string> {
     const args = [
       '-p',
       '--output-format',
@@ -62,7 +66,7 @@ export class ClaudeCliProvider extends TextProvider {
       '--disable-slash-commands',
       '--no-session-persistence',
       '--system-prompt',
-      SYSTEM_PROMPT,
+      system,
     ];
     if (this.requestedModel) args.push('--model', this.requestedModel);
     return new Promise((resolve, reject) => {

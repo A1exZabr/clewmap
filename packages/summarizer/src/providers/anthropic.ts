@@ -33,7 +33,11 @@ export class AnthropicApiProvider extends TextProvider {
     this.client = opts.client ?? new Anthropic();
   }
 
-  protected async complete(prompt: string, signal?: AbortSignal): Promise<string> {
+  protected async complete(
+    prompt: string,
+    signal?: AbortSignal,
+    system: string = SYSTEM_PROMPT,
+  ): Promise<string> {
     try {
       const response = await this.client.beta.messages.create(
         {
@@ -42,7 +46,7 @@ export class AnthropicApiProvider extends TextProvider {
           betas: ['server-side-fallback-2026-07-01'],
           fallbacks: 'default',
           output_config: { effort: 'low' },
-          system: SYSTEM_PROMPT,
+          system,
           messages: [{ role: 'user', content: prompt }],
         },
         { signal },

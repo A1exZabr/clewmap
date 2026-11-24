@@ -9,3 +9,5 @@ coverage/
 .clewmap/.queue.json
 .clewmap/.lock
 .clewmap/.cache/
+.vsix-stage/
+.vscode-test/

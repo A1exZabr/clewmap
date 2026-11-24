@@ -26,7 +26,7 @@ const MAX_CODE_CHARS = 12_000;
 export const SYSTEM_PROMPT =
   'You write short plain-language descriptions of source code for a code map shown next to the code in an editor. You answer with JSON only.';
 
-function languageName(code: string): string {
+export function languageName(code: string): string {
   return LANGUAGE_NAMES[code.toLowerCase()] ?? code;
 }
 

@@ -24,4 +24,4 @@ Open source (MIT) инструмент: живая карта кода в реп
 ## Команды
 - `pnpm -r build` — сборка всех пакетов
 - `pnpm test` — тесты (Vitest)
-- `pnpm --filter @clewmap/vscode dev` — расширение в Extension Development Host
+- `pnpm --filter clewmap-vscode dev` — расширение в Extension Development Host
