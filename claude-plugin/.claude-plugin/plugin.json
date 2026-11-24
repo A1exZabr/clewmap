@@ -2,7 +2,10 @@
   "name": "clewmap",
   "version": "0.1.0",
   "description": "A living code map for Claude Code: exact call graph from tree-sitter, impact of a change, callers across frontend/backend/bot, and plain-language summaries of every function — so Claude checks what breaks before it edits, instead of grepping the whole repo.",
-  "author": { "name": "Alexander Zabrodin", "url": "https://github.com/A1exZabr" },
+  "author": {
+    "name": "Alexander Zabrodin",
+    "url": "https://github.com/A1exZabr"
+  },
   "homepage": "https://github.com/A1exZabr/clewmap",
   "repository": "https://github.com/A1exZabr/clewmap",
   "license": "MIT",

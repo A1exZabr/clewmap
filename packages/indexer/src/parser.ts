@@ -1,5 +1,7 @@
+import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Language, Parser, type Tree } from 'web-tree-sitter';
 
 export type SupportedLanguage = 'python' | 'typescript' | 'tsx' | 'javascript';
@@ -15,7 +17,17 @@ const GRAMMAR_WASM: Record<SupportedLanguage, string> = {
 
 let initPromise: Promise<void> | null = null;
 /** Папка с .wasm, если они лежат не в node_modules (собранное расширение VS Code). */
-let wasmDir: string | null = null;
+let wasmDir: string | null = bundledWasmDir();
+
+/** Папка `wasm` рядом с собранным файлом: так её кладёт npm-пакет `clewmap`. В монорепо её нет. */
+function bundledWasmDir(): string | null {
+  try {
+    const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'wasm');
+    return existsSync(path.join(dir, 'web-tree-sitter.wasm')) ? dir : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Брать web-tree-sitter.wasm и грамматики из одной папки, а не из node_modules.

@@ -1,0 +1,66 @@
+name: Release
+
+# По тегу vX.Y.Z: проверки, затем npm-пакет `clewmap`, расширение в VS Code Marketplace и Open VSX,
+# релиз на GitHub с .vsix. Версию заранее поднимает `pnpm version-packages` (changesets).
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write # релиз на GitHub
+  id-token: write # npm provenance
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - run: pnpm install --frozen-lockfile
+      - name: Tag matches the version
+        run: node scripts/sync-version.mjs --check && git diff --exit-code
+      - run: pnpm build
+      - run: pnpm test
+      - run: pnpm lint
+
+      - name: Publish clewmap to npm
+        working-directory: packages/clewmap
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Package the extension
+        working-directory: packages/vscode
+        run: pnpm run package
+
+      - name: Publish to VS Code Marketplace
+        if: env.VSCE_PAT != ''
+        working-directory: packages/vscode
+        run: npx -y @vscode/vsce@3 publish --packagePath clewmap.vsix
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      - name: Publish to Open VSX
+        if: env.OVSX_PAT != ''
+        working-directory: packages/vscode
+        run: npx -y ovsx@0 publish clewmap.vsix
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notes=$(awk '/^## /{n++} n==1' packages/clewmap/CHANGELOG.md 2>/dev/null | tail -n +2)
+          gh release create "$GITHUB_REF_NAME" packages/vscode/clewmap.vsix \
+            --title "Clewmap $GITHUB_REF_NAME" --notes "${notes:-See the changelog.}"

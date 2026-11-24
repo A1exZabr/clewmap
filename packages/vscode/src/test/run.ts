@@ -99,12 +99,20 @@ async function main(): Promise<void> {
   // CLEWMAP_DEMO=<папка проекта>: открыть его и показать экраны по очереди (для скриншотов), без тестов.
   const demo = process.env.CLEWMAP_DEMO;
   const workspace = demo ?? (await prepare());
-  const installed = '/Applications/Visual Studio Code.app/Contents/MacOS/Electron';
+  // Установленный VS Code (бинарь в новых версиях называется Code, в старых — Electron).
+  // Сами ничего не скачиваем: без VS Code раннер падает с подсказкой, а не тянет 400 МБ молча.
   const vscodeExecutablePath =
-    process.env.CLEWMAP_VSCODE ?? (existsSync(installed) ? installed : undefined);
+    process.env.CLEWMAP_VSCODE ??
+    ['Code', 'Electron']
+      .map((b) => `/Applications/Visual Studio Code.app/Contents/MacOS/${b}`)
+      .find((p) => existsSync(p));
+  if (!vscodeExecutablePath) {
+    console.error('VS Code not found. Set CLEWMAP_VSCODE=/path/to/the/VS Code binary.');
+    process.exit(1);
+  }
   const userData = await mkdtemp(path.join(os.tmpdir(), 'clewmap-vscode-user-'));
   await runTests({
-    ...(vscodeExecutablePath ? { vscodeExecutablePath } : {}),
+    vscodeExecutablePath,
     extensionDevelopmentPath: pkg,
     extensionTestsPath: path.join(pkg, demo ? 'dist/test/demo.js' : 'dist/test/suite.js'),
     launchArgs: [
@@ -119,6 +127,7 @@ async function main(): Promise<void> {
     extensionTestsEnv: {
       CLEWMAP_TEST_WORKSPACE: workspace,
       CLEWMAP_DEMO_SIGNAL: process.env.CLEWMAP_DEMO_SIGNAL ?? '',
+      CLEWMAP_DEMO_SCENE: process.env.CLEWMAP_DEMO_SCENE ?? '',
     },
   });
 }

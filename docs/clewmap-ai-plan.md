@@ -382,15 +382,15 @@ Summary = {
 
 ### 5.1 Упаковка
 - [x] Имя проверено 22.11.2026: `clewmap` свободно в npm, VS Code Marketplace, Open VSX, GitHub (репо и аккаунт). Перед публикацией перепроверить и проверить товарные знаки (USPTO, WIPO); занять `github.com/clewmap` и npm-имя заранее
-- [ ] Публикация CLI в npm одним пакетом `clewmap` (бинарь `clewmap`, включает mcp-подкоманду, WASM-грамматики в пакете)
-- [ ] Сборка `.vsix` через `@vscode/vsce`; публикация в VS Code Marketplace и Open VSX (`ovsx`) — Cursor и Windsurf берут оттуда
-- [ ] Workflow `release.yml`: по тегу `v*` собирает и публикует всё; changesets для версий
+- [~] Публикация CLI в npm одним пакетом `clewmap` (бинарь `clewmap`, включает mcp-подкоманду, WASM-грамматики в пакете) — пакет собран (`packages/clewmap`: весь код и web-tree-sitter в одном `dist/bin.js`, wasm-грамматики в `dist/wasm`, без нативных пакетов `tree-sitter-*`; 548 КБ в архиве), проверен установкой из tarball: `init --hooks`, `build`, коммит через хук за 0,69 с, `mcp` по stdio. Сама публикация ждёт `npm login` автора
+- [~] Сборка `.vsix` через `@vscode/vsce`; публикация в VS Code Marketplace и Open VSX (`ovsx`) — Cursor и Windsurf берут оттуда — `.vsix` собирается и ставится в чистый VS Code; публикация ждёт издателя `clewmap` в Marketplace и пространства имён в Open VSX (токены `VSCE_PAT`, `OVSX_PAT`)
+- [x] Workflow `release.yml`: по тегу `v*` собирает и публикует всё; changesets для версий — по тегу `v*`: проверка, что тег совпадает с версией, сборка, тесты, npm с provenance, Marketplace и Open VSX (если заданы токены), релиз на GitHub с `.vsix`. Одна версия на всё: `pnpm version-packages` (changesets + `scripts/sync-version.mjs`)
 
 ### 5.2 README (главный маркетинговый актив)
-- [ ] Первый экран: название, слоган «Your codebase, explained on hover», GIF 10–15 с: наведение на вызов → подсказка; коммит → панель «Влияние» обновилась
-- [ ] Установка в 3 строки: `npx clewmap init --hooks`, расширение из Marketplace, `/plugin marketplace add …`
-- [ ] Блоки: «Всё локально», «Работает с подпиской Claude Code, без API-ключа», «Обновляется на каждом коммите», сравнение с альтернативами (честно), формат графа открыт
-- [ ] `CONTRIBUTING.md`, шаблоны issue, `CODE_OF_CONDUCT.md`; включить GitHub Sponsors; CLA-бот (до первых внешних PR)
+- [x] Первый экран: название, слоган «Your codebase, explained on hover», GIF 10–15 с: наведение на вызов → подсказка; коммит → панель «Влияние» обновилась — GIF 14 с из настоящего VS Code (`docs/media/clewmap-demo.gif`): строки над функциями → подсказка → правка → коммит, «Влияние» и Δ → новое описание из фона
+- [x] Установка в 3 строки: `npx clewmap init --hooks`, расширение из Marketplace, `/plugin marketplace add …`
+- [x] Блоки: «Всё локально», «Работает с подпиской Claude Code, без API-ключа», «Обновляется на каждом коммите», сравнение с альтернативами (честно), формат графа открыт — в сравнении только проверенное, без цифр звёзд и цен
+- [~] `CONTRIBUTING.md`, шаблоны issue, `CODE_OF_CONDUCT.md`; включить GitHub Sponsors; CLA-бот (до первых внешних PR) — CONTRIBUTING, CODE_OF_CONDUCT (ссылка на Contributor Covenant 2.1, жалобы через приватный репорт GitHub), шаблоны issue и PR, `FUNDING.yml`. Sponsors включает автор в настройках GitHub; CLA-бот — когда появятся внешние PR
 
 ### 5.3 Запуск
 - [ ] Один день: Show HN, r/ClaudeAI, r/vscode, r/programming (если правила позволяют), X, Хабр (статья с историей «зачем»)

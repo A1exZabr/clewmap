@@ -1,0 +1,40 @@
+name: Bug report
+description: Something does not work as described
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what you got. Paste errors as text.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: A small repository or a few files that show the problem help the most.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Clewmap version
+      placeholder: npx clewmap --version
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where
+      multiple: true
+      options:
+        - CLI / git hooks
+        - VS Code extension
+        - Cursor or another VS Code fork
+        - Claude Code plugin / MCP
+        - GitHub Action
+  - type: input
+    id: env
+    attributes:
+      label: OS, Node version, editor version

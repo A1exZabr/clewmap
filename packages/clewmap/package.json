@@ -1,0 +1,48 @@
+{
+  "name": "clewmap",
+  "version": "0.1.0",
+  "description": "A living map of your codebase: plain-language summaries of every function, a call graph that updates on every commit, jumps from a frontend button to its backend handler, and an MCP server so AI agents know what breaks before they change it.",
+  "license": "MIT",
+  "author": "Alexander Zabrodin",
+  "homepage": "https://github.com/A1exZabr/clewmap#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/A1exZabr/clewmap.git"
+  },
+  "bugs": "https://github.com/A1exZabr/clewmap/issues",
+  "keywords": [
+    "code-map",
+    "call-graph",
+    "tree-sitter",
+    "mcp",
+    "claude-code",
+    "vscode",
+    "impact-analysis",
+    "onboarding"
+  ],
+  "type": "module",
+  "bin": {
+    "clewmap": "dist/bin.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.13.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "commander": "^15.1.0",
+    "picocolors": "^1.1.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@clewmap/cli": "workspace:*"
+  }
+}

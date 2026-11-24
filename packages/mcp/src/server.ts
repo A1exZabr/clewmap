@@ -477,10 +477,13 @@ export async function runStdioServer(
   holder.watch();
   const server = createClewmapServer(holder);
   await server.connect(new StdioServerTransport());
-  const stop = () => {
+  // stdin закрыли: дать ответить на запросы в работе (watcher больше не держит процесс), потом выйти.
+  process.stdin.on('close', () => {
+    holder.close();
+    setTimeout(() => process.exit(0), 5000).unref();
+  });
+  process.on('SIGTERM', () => {
     holder.close();
     void server.close().finally(() => process.exit(0));
-  };
-  process.stdin.on('close', stop);
-  process.on('SIGTERM', stop);
+  });
 }
