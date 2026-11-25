@@ -74,15 +74,28 @@ function Row({
         <span class="title">
           {n.changed && <span class="delta">Δ</span>}
           <span class="name">{n.label}</span>
-          {extra}
         </span>
-        {n.summary && <span class="sum">{n.summary}</span>}
+        {(extra || n.summary) && (
+          <span class="sum">
+            {extra}
+            {extra && n.summary ? ' ' : ''}
+            {n.summary}
+          </span>
+        )}
       </span>
       <span class="where">
         {n.file.split('/').pop()}:{n.line}
       </span>
     </button>
   );
+}
+
+/** Высота графа по самой длинной колонке: без пустого поля, когда соседей мало. */
+function graphHeight(vm: NeighborsVM): number {
+  const perCol = new Map<number, number>();
+  for (const n of vm.nodes) perCol.set(n.col, (perCol.get(n.col) ?? 0) + 1);
+  const rows = Math.max(1, ...perCol.values());
+  return Math.min(340, Math.max(160, rows * 58 + 40));
 }
 
 function Neighbors({
@@ -125,7 +138,7 @@ function Neighbors({
           <span>{s.symbol}</span>
           <span>{s.callees}</span>
         </div>
-        <div id="graph" ref={ref} />
+        <div id="graph" ref={ref} style={{ height: `${graphHeight(vm)}px` }} />
       </div>
       <div class="depth">
         {s.depth}
@@ -327,6 +340,10 @@ function App() {
   return (
     <>
       <div class="head">
+        <svg class="logo" viewBox="48 48 416 416" aria-hidden="true">
+          <path d="M 371.9 365.7 A 164.0 164.0 0 1 1 371.9 146.3 A 34.0 34.0 0 0 1 321.3 191.8 A 96.0 96.0 0 1 0 321.3 320.2 C 361.3 348.2, 388.0 344.0, 400.4 333.1" />
+          <circle cx="420.0" cy="316.0" r="26" />
+        </svg>
         <strong>Clewmap</strong>
         <span class={`status ${state.status.fresh ? 'ok' : 'behind'}`}>
           {state.status.fresh ? s.fresh : fmt(s.behind, state.status.outdated)}

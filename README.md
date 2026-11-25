@@ -1,6 +1,10 @@
-# Clewmap
+<p align="center">
+  <img src="docs/media/logo.svg" width="112" height="112" alt="Clewmap logo: the letter C wound from a thread that leads to a node">
+</p>
 
-Your codebase, explained on hover.
+<h1 align="center">Clewmap</h1>
+
+<p align="center"><b>Your codebase, explained on hover.</b></p>
 
 Clewmap keeps a map of your repository next to the code: a call graph built by tree-sitter, a short
 plain-language summary of every function, and the steps inside long ones. You see it in VS Code or Cursor
@@ -29,6 +33,8 @@ install.
 
 ## What you get in the editor
 
+![VS Code with Clewmap: a summary line above each function, numbered steps inside create_order, layer stripes, the hover card for apply_promo and the neighbors graph](docs/media/editor.png)
+
 - A line above every function: its summary, how many places call it, and which layers it reaches
   ("reaches: Service, Data, External API"). Click to list callers or callees.
 - A hover card on calls and function names: signature, layer, summary, callers, callees, and a note when
@@ -43,6 +49,8 @@ install.
 - A side panel with the neighbors graph, the impact of the last commit, search over names and summaries,
   the chain from an entry point down to the database (Alt+[ and Alt+] walk it), and "Explain in more
   depth", which asks your model once and caches the answer for that version of the code.
+
+![The side panel: impact of the last commit, the chain from a bot button to the payment API, search over summaries, and Explain in more depth](docs/media/panel-tabs.png)
 
 When you edit a file without saving, the extension parses it again with the same tree-sitter grammars,
 so everything stays on the right lines and a changed function is marked as ahead of the graph.

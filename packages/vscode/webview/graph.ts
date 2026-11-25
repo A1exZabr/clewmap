@@ -1,7 +1,6 @@
 import cytoscape, { type Core, type ElementDefinition } from 'cytoscape';
 import type { NeighborsVM } from '../src/panel/protocol';
 
-const COL_GAP = 130;
 const ROW_GAP = 54;
 
 function cssVar(name: string, fallback: string): string {
@@ -31,6 +30,22 @@ export class NeighborGraph {
     this.key = key;
     const byCol = new Map<number, typeof vm.nodes>();
     for (const n of vm.nodes) byCol.set(n.col, [...(byCol.get(n.col) ?? []), n]);
+    // Ширина узла по длине имени: имена не обрезаются, граф ужимается под панель целиком.
+    const widthOf = (label: string) => Math.min(Math.max(label.length * 6.8 + 22, 72), 190);
+    const colWidth = new Map<number, number>();
+    for (const [col, nodes] of byCol)
+      colWidth.set(
+        col,
+        Math.max(...nodes.map((n) => widthOf((n.changed ? changedPrefix : '') + n.label))),
+      );
+    const cols = [...colWidth.keys()].sort((a, b) => a - b);
+    const colX = new Map<number, number>();
+    let x = 0;
+    cols.forEach((col, i) => {
+      if (i > 0) x += (colWidth.get(cols[i - 1]!)! + colWidth.get(col)!) / 2 + 34;
+      colX.set(col, x);
+    });
+    const shift = colX.get(0) ?? 0;
     const elements: ElementDefinition[] = [];
     for (const [col, nodes] of byCol) {
       nodes.sort((a, b) => a.label.localeCompare(b.label));
@@ -42,8 +57,9 @@ export class NeighborGraph {
             color: n.color ?? cssVar('--vscode-descriptionForeground', '#888'),
             center: n.col === 0 ? 1 : 0,
             changed: n.changed ? 1 : 0,
+            w: widthOf((n.changed ? changedPrefix : '') + n.label),
           },
-          position: { x: col * COL_GAP, y: (i - (nodes.length - 1) / 2) * ROW_GAP },
+          position: { x: colX.get(col)! - shift, y: (i - (nodes.length - 1) / 2) * ROW_GAP },
         });
       });
     }
@@ -77,7 +93,7 @@ export class NeighborGraph {
           selector: 'node',
           style: {
             shape: 'round-rectangle',
-            width: 104,
+            width: 'data(w)',
             height: 34,
             'background-color': bg,
             'border-width': 1.5,
@@ -89,7 +105,7 @@ export class NeighborGraph {
             'text-valign': 'center',
             'text-halign': 'center',
             'text-wrap': 'ellipsis',
-            'text-max-width': '94px',
+            'text-max-width': '180px',
           },
         },
         {

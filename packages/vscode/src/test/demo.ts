@@ -12,24 +12,33 @@ const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 let api: ClewmapApi;
 
-async function step(name: string): Promise<void> {
+async function step(name: string, keep?: () => Thenable<unknown>): Promise<void> {
   writeFileSync(`${signal}.state`, name);
   writeFileSync(
     `${signal}.${name.split(' ')[0]}.json`,
     JSON.stringify({ type: 'state', state: api.panel.state() }),
   );
   const end = Date.now() + 10 * 60_000;
-  while (!existsSync(signal) && Date.now() < end) await delay(200);
+  let last = 0;
+  while (!existsSync(signal) && Date.now() < end) {
+    // Подсказка закрывается, когда окно теряет фокус: на кадрах с ней показываем её снова.
+    if (keep && Date.now() - last > 2000) {
+      last = Date.now();
+      await keep();
+    }
+    await delay(200);
+  }
   rmSync(signal, { force: true });
 }
 
 export async function run(): Promise<void> {
   try {
-    if (process.env.CLEWMAP_DEMO_SCENE === 'gif') {
+    const scene = process.env.CLEWMAP_DEMO_SCENE;
+    if (scene === 'gif' || scene === 'shots') {
       const ext = vscode.extensions.all.find((e) => e.packageJSON.name === 'clewmap-vscode')!;
       api = (await ext.activate()) as ClewmapApi;
       await api.ready;
-      await gif();
+      await (scene === 'gif' ? gif() : shots());
     } else await demo();
   } catch (e) {
     writeFileSync(`${signal}.error`, e instanceof Error ? (e.stack ?? e.message) : String(e));
@@ -59,12 +68,15 @@ async function gif(): Promise<void> {
   await delay(1500);
   await step('plain');
 
-  editor = await open(ORDER);
-  await vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup');
-  editor.selection = new vscode.Selection(6, 14, 6, 14);
+  const showHoverAt = async () => {
+    editor = await open(ORDER);
+    await vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup');
+    editor.selection = new vscode.Selection(6, 14, 6, 14);
+    await vscode.commands.executeCommand('editor.action.showHover');
+  };
+  await showHoverAt();
   await delay(400);
-  await vscode.commands.executeCommand('editor.action.showHover');
-  await step('hover');
+  await step('hover', showHoverAt);
 
   // Правка и коммит, как у разработчика: хук pre-commit обновит граф, post-commit напишет описание.
   const pricing = await open(PRICING);
@@ -99,12 +111,58 @@ async function gif(): Promise<void> {
     if ((n?.summary && n.summary.forBodyHash === n.bodyHash) || Date.now() > end) break;
     await delay(500);
   }
-  editor = await open(ORDER);
-  await vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup');
-  editor.selection = new vscode.Selection(6, 14, 6, 14);
+  await showHoverAt();
   await delay(800);
-  await vscode.commands.executeCommand('editor.action.showHover');
-  await step('summary');
+  await step('summary', showHoverAt);
+}
+
+/** Кадры для README и Marketplace: обзор, подсказка, «Влияние», цепочка, поиск, объяснение. */
+async function shots(): Promise<void> {
+  const ORDER = 'src/bot/handlers/order.py';
+  const create = `${ORDER}#create_order`;
+  const open = async (file: string) =>
+    vscode.window.showTextDocument(
+      await vscode.workspace.openTextDocument(vscode.Uri.file(path.join(ws, file))),
+      { preserveFocus: false },
+    );
+  const focusAt = async (line: number, col: number) => {
+    const ed = await open(ORDER);
+    await vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup');
+    ed.selection = new vscode.Selection(line, col, line, col);
+    ed.revealRange(new vscode.Range(0, 0, 20, 0), vscode.TextEditorRevealType.AtTop);
+    return ed;
+  };
+  await vscode.commands.executeCommand('workbench.action.closeAuxiliaryBar');
+  await vscode.commands.executeCommand('notifications.clearAll');
+  await vscode.commands.executeCommand('clewmap.openOnGraph', create);
+  await focusAt(3, 0);
+  await delay(1500);
+  await step('overview');
+
+  await focusAt(6, 14);
+  await delay(400);
+  await step('hover', async () => {
+    await focusAt(6, 14);
+    await vscode.commands.executeCommand('editor.action.showHover');
+  });
+
+  await api.panel.show('impact');
+  await focusAt(3, 0);
+  await delay(800);
+  await step('impact');
+
+  await focusAt(5, 4);
+  await vscode.commands.executeCommand('clewmap.showFlow', create);
+  await delay(800);
+  await step('flow');
+
+  await api.panel.show('search', 'payment link');
+  await delay(800);
+  await step('search');
+
+  await api.panel.runExplain(create);
+  await delay(500);
+  await step('explain');
 }
 
 async function demo(): Promise<void> {

@@ -1,3 +1,5 @@
+<p align="center"><img src="https://raw.githubusercontent.com/A1exZabr/clewmap/main/docs/media/logo.png" width="96" height="96" alt="Clewmap logo"></p>
+
 # Clewmap for VS Code and Cursor
 
 A living map of your code, right in the editor. It reads the `.clewmap/` graph that the
@@ -18,6 +20,10 @@ A living map of your code, right in the editor. It reads the `.clewmap/` graph t
 - **Side panel**: neighbors graph, impact of the last commit, fuzzy search over names and summaries,
   and “Explain in more depth”, which asks your configured model once and caches the answer per code
   version.
+
+![Clewmap in VS Code](https://raw.githubusercontent.com/A1exZabr/clewmap/main/docs/media/editor.png)
+
+![The side panel](https://raw.githubusercontent.com/A1exZabr/clewmap/main/docs/media/panel-tabs.png)
 
 ## Getting started
 
