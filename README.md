@@ -17,10 +17,15 @@ on every commit.
 ## Install
 
 ```bash
-npx clewmap init --hooks        # config, git hooks, then: npx clewmap build
+npx clewmap init --hooks
+npx clewmap build
 ```
 
-Then install the **Clewmap** extension in VS Code or Cursor, and in Claude Code:
+The first command writes `clewmap.config.json` and installs the git hooks, the second builds the graph and the summaries.
+
+Then install the **Clewmap** extension: download `clewmap.vsix` from the
+[latest release](https://github.com/A1exZabr/clewmap/releases/latest) and run **Extensions: Install from
+VSIX…** in VS Code or Cursor (the Marketplace listing is next). In Claude Code:
 
 ```
 /plugin install clewmap --marketplace A1exZabr/clewmap

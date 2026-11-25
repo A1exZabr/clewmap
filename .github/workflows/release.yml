@@ -35,7 +35,14 @@ jobs:
 
       - name: Publish clewmap to npm
         working-directory: packages/clewmap
-        run: npm publish --provenance --access public
+        # Версия могла уйти в npm вручную раньше тега: тогда шаг ничего не делает.
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if npm view "clewmap@$version" version >/dev/null 2>&1; then
+            echo "clewmap@$version is already on npm"
+          else
+            npm publish --provenance --access public
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -61,6 +68,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          notes=$(awk '/^## /{n++} n==1' packages/clewmap/CHANGELOG.md 2>/dev/null | tail -n +2)
-          gh release create "$GITHUB_REF_NAME" packages/vscode/clewmap.vsix \
-            --title "Clewmap $GITHUB_REF_NAME" --notes "${notes:-See the changelog.}"
+          # Релиз мог быть создан руками: тогда только обновляем .vsix в нём.
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" packages/vscode/clewmap.vsix --clobber
+          else
+            notes=$(awk '/^## /{n++} n==1' packages/clewmap/CHANGELOG.md 2>/dev/null | tail -n +2)
+            gh release create "$GITHUB_REF_NAME" packages/vscode/clewmap.vsix \
+              --title "Clewmap $GITHUB_REF_NAME" --notes "${notes:-See the changelog.}"
+          fi
