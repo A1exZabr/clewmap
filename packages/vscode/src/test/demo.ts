@@ -13,6 +13,8 @@ const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 let api: ClewmapApi;
 
 async function step(name: string, keep?: () => Thenable<unknown>): Promise<void> {
+  // Уведомление «расширения временно отключены» приходит с задержкой и попадает в кадр.
+  await vscode.commands.executeCommand('notifications.clearAll');
   writeFileSync(`${signal}.state`, name);
   writeFileSync(
     `${signal}.${name.split(' ')[0]}.json`,
@@ -46,74 +48,124 @@ export async function run(): Promise<void> {
   }
 }
 
-/** Сцены для GIF в README: строки над функциями → подсказка → коммит → «Влияние» и Δ. */
+/**
+ * Сцены для GIF в README. Каждый шаг — настоящий кадр VS Code; курсор и клики дорисовываются при сборке GIF
+ * (scripts/make-demo-gif.py), поэтому шаги идут ровно в том порядке, в каком по ним «кликает» курсор.
+ */
 async function gif(): Promise<void> {
   const ORDER = 'src/bot/handlers/order.py';
   const PRICING = 'src/services/pricing.py';
   const create = `${ORDER}#create_order`;
   const promo = `${PRICING}#apply_promo`;
-  const open = async (file: string) =>
-    vscode.window.showTextDocument(
+  const open = async (file: string, line: number, col: number) => {
+    const ed = await vscode.window.showTextDocument(
       await vscode.workspace.openTextDocument(vscode.Uri.file(path.join(ws, file))),
-      {
-        preserveFocus: false,
-      },
+      { preserveFocus: false },
     );
-  await vscode.commands.executeCommand('workbench.action.closeAuxiliaryBar');
-  await vscode.commands.executeCommand('notifications.clearAll');
-  await vscode.commands.executeCommand('clewmap.openOnGraph', create);
-  let editor = await open(ORDER);
-  editor.selection = new vscode.Selection(3, 0, 3, 0);
-  editor.revealRange(new vscode.Range(0, 0, 20, 0), vscode.TextEditorRevealType.AtTop);
-  await delay(1500);
-  await step('plain');
-
-  const showHoverAt = async () => {
-    editor = await open(ORDER);
     await vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup');
-    editor.selection = new vscode.Selection(6, 14, 6, 14);
+    ed.selection = new vscode.Selection(line, col, line, col);
+    ed.revealRange(new vscode.Range(0, 0, 20, 0), vscode.TextEditorRevealType.AtTop);
+    return ed;
+  };
+  const hoverAt = (file: string, line: number, col: number) => async () => {
+    await open(file, line, col);
     await vscode.commands.executeCommand('editor.action.showHover');
   };
-  await showHoverAt();
-  await delay(400);
-  await step('hover', showHoverAt);
+  const run = (cmd: string, ...args: unknown[]) => vscode.commands.executeCommand(cmd, ...args);
 
-  // Правка и коммит, как у разработчика: хук pre-commit обновит граф, post-commit напишет описание.
-  const pricing = await open(PRICING);
-  const text = pricing.document.getText();
-  const from = 'return max(total - found.amount, 0)';
-  const at = text.indexOf(from);
-  await pricing.edit((b) =>
-    b.replace(
-      new vscode.Range(
-        pricing.document.positionAt(at),
-        pricing.document.positionAt(at + from.length),
-      ),
-      'return max(total - found.amount, 1)',
-    ),
-  );
-  await pricing.document.save();
+  await run('workbench.action.closeAuxiliaryBar');
+  await run('workbench.action.closeSidebar');
+  await run('workbench.action.closeAllEditors');
+  await run('notifications.clearAll');
+  await open(ORDER, 4, 0);
+  await delay(1500);
+  await step('start');
+
+  // Наведение на вызов apply_promo.
+  await hoverAt(ORDER, 6, 14)();
+  await delay(400);
+  await step('hover', hoverAt(ORDER, 6, 14));
+  await run('editor.action.hideHover');
+  await open(ORDER, 4, 0);
+
+  // Клик по «вызывают: 2» над create_order — список вызывающих.
+  void run('clewmap.showCallers', create);
+  await delay(800);
+  await step('callers');
+  await run('workbench.action.closeQuickOpen');
+
+  // Клик по описанию над create_order — граф соседей в боковой панели.
+  await run('clewmap.openOnGraph', create);
+  // Боковая панель шире (редактор уже), чтобы граф читался в GIF.
+  await open(ORDER, 4, 0);
+  for (let i = 0; i < 5; i++) await run('workbench.action.decreaseViewWidth');
+  await delay(1500);
+  await step('graph');
+
+  // Клик по узлу apply_promo в графе — переход к функции.
+  let ed = await open(PRICING, 15, 4);
+  await delay(800);
+  await step('pricing');
+
+  // Правка: курсор после «0» в последней строке, 0 → 1, сохранение.
+  const L = 23;
+  const col = ed.document.lineAt(L).text.lastIndexOf('0');
+  ed = await open(PRICING, L, col + 1);
+  await delay(300);
+  await step('caret');
+  await ed.edit((b) => b.delete(new vscode.Range(L, col, L, col + 1)));
+  ed.selection = new vscode.Selection(L, col, L, col);
+  await delay(300);
+  await step('typing');
+  await ed.edit((b) => b.insert(new vscode.Position(L, col), '1'));
+  ed.selection = new vscode.Selection(L, col + 1, L, col + 1);
+  await delay(600);
+  await step('typed');
+  await ed.document.save();
+  await delay(800);
   await step('edited');
-  execFileSync('git', ['commit', '-qam', 'Promo codes never make an order free'], {
-    cwd: ws,
-    stdio: 'pipe',
-  });
-  await api.panel.show('impact');
-  editor = await open(ORDER);
-  editor.selection = new vscode.Selection(6, 14, 6, 14);
+
+  // Коммит из панели Source Control: сообщение, кнопка Commit. Хуки срабатывают как у разработчика.
+  await run('workbench.view.scm');
+  const gitExt = vscode.extensions.getExtension('vscode.git');
+  const gitApi = (await gitExt?.activate())?.getAPI(1);
+  const repoDeadline = Date.now() + 15_000;
+  while (!gitApi?.repositories?.length && Date.now() < repoDeadline) await delay(300);
+  const repo = gitApi?.repositories?.[0];
+  if (!repo) throw new Error('the git extension did not find the repository');
+  await delay(1000);
+  await step('scm');
+  const message = 'Promo codes never make an order free';
+  for (const n of [11, 23, message.length]) {
+    repo.inputBox.value = message.slice(0, n);
+    await delay(200);
+    await step(`msg${n}`);
+  }
+  execFileSync('git', ['commit', '-qam', message], { cwd: ws, stdio: 'pipe' });
+  repo.inputBox.value = '';
+  await run('git.refresh');
   await delay(1500);
   await step('committed');
 
+  // Клик по значку Clewmap, затем по вкладке «Влияние».
+  await run('workbench.view.extension.clewmap');
+  await delay(1000);
+  await step('panel');
+  await api.panel.show('impact');
+  await open(PRICING, L, col + 1);
+  await delay(1000);
+  await step('impact');
+
   // Описание новой версии apply_promo приходит из фона через несколько секунд.
-  const end = Date.now() + 60_000;
+  const end = Date.now() + 90_000;
   for (;;) {
     const n = api.ws.storeOfId(promo)?.index.get(promo);
     if ((n?.summary && n.summary.forBodyHash === n.bodyHash) || Date.now() > end) break;
     await delay(500);
   }
-  await showHoverAt();
+  await hoverAt(PRICING, 15, 6)();
   await delay(800);
-  await step('summary', showHoverAt);
+  await step('summary', hoverAt(PRICING, 15, 6));
 }
 
 /** Кадры для README и Marketplace: обзор, подсказка, «Влияние», цепочка, поиск, объяснение. */
