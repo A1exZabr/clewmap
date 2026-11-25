@@ -76,7 +76,8 @@ describe('hook install', () => {
       ['pre-commit', 'installed'],
       ['post-commit', 'installed'],
     ]);
-    expect((await stat(pre)).mode & 0o111).toBeTruthy();
+    // На Windows у файлов нет бита исполнения, git запускает хуки через свой sh.
+    if (process.platform !== 'win32') expect((await stat(pre)).mode & 0o111).toBeTruthy();
     expect(await readFile(pre, 'utf8')).toContain('echo mine');
     await uninstallHooks(root);
     expect(await readFile(pre, 'utf8')).toBe('#!/bin/sh\necho mine\n');
@@ -161,13 +162,16 @@ describe('hook install', () => {
     });
     expect(git('show', '--stat', '--format=', 'HEAD')).not.toContain('.clewmap');
   });
-  it('hooks.summarize = "pre-commit" puts summaries into the same commit and respects the time limit', async () => {
-    // Подменный claude: отвечает описаниями по заголовкам ### id; FAKE_CLAUDE_SLEEP заставляет его висеть.
-    const fakeDir = await mkdtemp(path.join(os.tmpdir(), 'clewmap-fake-claude-'));
-    const fake = path.join(fakeDir, 'claude');
-    await writeFile(
-      fake,
-      `#!${process.execPath}
+  // Подменный claude здесь — скрипт с shebang, Windows такой файл не запустит.
+  it.skipIf(process.platform === 'win32')(
+    'hooks.summarize = "pre-commit" puts summaries into the same commit and respects the time limit',
+    async () => {
+      // Подменный claude: отвечает описаниями по заголовкам ### id; FAKE_CLAUDE_SLEEP заставляет его висеть.
+      const fakeDir = await mkdtemp(path.join(os.tmpdir(), 'clewmap-fake-claude-'));
+      const fake = path.join(fakeDir, 'claude');
+      await writeFile(
+        fake,
+        `#!${process.execPath}
 let input = '';
 process.stdin.on('data', (c) => (input += c)).on('end', () => {
   const ids = [...input.matchAll(/^### (\\S+)$/gm)].map((m) => m[1]);
@@ -177,62 +181,64 @@ process.stdin.on('data', (c) => (input += c)).on('end', () => {
   setTimeout(() => process.stdout.write(JSON.stringify(out)), Number(process.env.FAKE_CLAUDE_SLEEP || 0));
 });
 `,
-    );
-    await chmod(fake, 0o755);
-    extraEnv = { PATH: `${fakeDir}${path.delimiter}${process.env.PATH}` };
-
-    await cp(path.join(FIXTURES, 'py-bot'), root, { recursive: true });
-    await init(root, {});
-    const configPath = path.join(root, 'clewmap.config.json');
-    const setHooks = async (hooks: object) => {
-      const config = JSON.parse(await readFile(configPath, 'utf8'));
-      config.hooks = { ...config.hooks, ...hooks };
-      await writeFile(configPath, JSON.stringify(config, null, 2) + '\n');
-    };
-    await setHooks({ summarize: 'pre-commit', summarizeTimeout: 30 });
-    execFileSync(process.execPath, [BIN, '--cwd', root, 'build', '--no-summaries'], {
-      stdio: 'pipe',
-    });
-    git('add', '-A');
-    git('commit', '-qm', 'graph', '--no-verify');
-    await installHooks(root, {
-      hooks: ['pre-commit'],
-      fallback: { node: process.execPath, bin: BIN },
-    });
-
-    const src = path.join(root, 'src/services/pricing.py');
-    const edit = async (from: string, to: string) => {
-      await writeFile(src, (await readFile(src, 'utf8')).replace(from, to));
-      git('add', 'src/services/pricing.py');
-    };
-    const committedPromo = () =>
-      JSON.parse(git('show', 'HEAD:.clewmap/modules/src/services/pricing.py.json')).symbols.find(
-        (s: { name: string }) => s.name === 'apply_promo',
       );
+      await chmod(fake, 0o755);
+      extraEnv = { PATH: `${fakeDir}${path.delimiter}${process.env.PATH}` };
 
-    await edit('return max(total - found.amount, 0)', 'return max(total - found.amount, 1)');
-    git('commit', '-qm', 'change apply_promo');
-    const promo = committedPromo();
-    expect(promo.summary.text).toBe('fake summary of src/services/pricing.py#apply_promo');
-    expect(promo.summary.forBodyHash).toBe(promo.bodyHash);
-    expect(promo.summary.model).toBe('fake-claude');
-    expect(git('status', '--porcelain')).toBe('');
-    expect((await readQueue(root)).items).toHaveLength(0);
+      await cp(path.join(FIXTURES, 'py-bot'), root, { recursive: true });
+      await init(root, {});
+      const configPath = path.join(root, 'clewmap.config.json');
+      const setHooks = async (hooks: object) => {
+        const config = JSON.parse(await readFile(configPath, 'utf8'));
+        config.hooks = { ...config.hooks, ...hooks };
+        await writeFile(configPath, JSON.stringify(config, null, 2) + '\n');
+      };
+      await setHooks({ summarize: 'pre-commit', summarizeTimeout: 30 });
+      execFileSync(process.execPath, [BIN, '--cwd', root, 'build', '--no-summaries'], {
+        stdio: 'pipe',
+      });
+      git('add', '-A');
+      git('commit', '-qm', 'graph', '--no-verify');
+      await installHooks(root, {
+        hooks: ['pre-commit'],
+        fallback: { node: process.execPath, bin: BIN },
+      });
 
-    // Лимит 1 с, а claude висит 20 с: коммит не ждёт дольше лимита, задача остаётся в очереди без штрафа.
-    await setHooks({ summarizeTimeout: 1 });
-    git('add', 'clewmap.config.json');
-    git('commit', '-qm', 'limit', '--no-verify');
-    extraEnv = { ...extraEnv, FAKE_CLAUDE_SLEEP: '20000' };
-    await edit('return max(total - found.amount, 1)', 'return max(total - found.amount, 2)');
-    const t0 = performance.now();
-    git('commit', '-qm', 'slow model');
-    expect(performance.now() - t0).toBeLessThan(8000);
-    const slow = committedPromo();
-    expect(slow.bodyHash).not.toBe(promo.bodyHash);
-    expect(slow.summary).toBeNull();
-    const q = await readQueue(root);
-    expect(q.items.find((i) => i.id.endsWith('#apply_promo'))?.attempts).toBe(0);
-    await rm(fakeDir, { recursive: true, force: true });
-  }, 30_000);
+      const src = path.join(root, 'src/services/pricing.py');
+      const edit = async (from: string, to: string) => {
+        await writeFile(src, (await readFile(src, 'utf8')).replace(from, to));
+        git('add', 'src/services/pricing.py');
+      };
+      const committedPromo = () =>
+        JSON.parse(git('show', 'HEAD:.clewmap/modules/src/services/pricing.py.json')).symbols.find(
+          (s: { name: string }) => s.name === 'apply_promo',
+        );
+
+      await edit('return max(total - found.amount, 0)', 'return max(total - found.amount, 1)');
+      git('commit', '-qm', 'change apply_promo');
+      const promo = committedPromo();
+      expect(promo.summary.text).toBe('fake summary of src/services/pricing.py#apply_promo');
+      expect(promo.summary.forBodyHash).toBe(promo.bodyHash);
+      expect(promo.summary.model).toBe('fake-claude');
+      expect(git('status', '--porcelain')).toBe('');
+      expect((await readQueue(root)).items).toHaveLength(0);
+
+      // Лимит 1 с, а claude висит 20 с: коммит не ждёт дольше лимита, задача остаётся в очереди без штрафа.
+      await setHooks({ summarizeTimeout: 1 });
+      git('add', 'clewmap.config.json');
+      git('commit', '-qm', 'limit', '--no-verify');
+      extraEnv = { ...extraEnv, FAKE_CLAUDE_SLEEP: '20000' };
+      await edit('return max(total - found.amount, 1)', 'return max(total - found.amount, 2)');
+      const t0 = performance.now();
+      git('commit', '-qm', 'slow model');
+      expect(performance.now() - t0).toBeLessThan(8000);
+      const slow = committedPromo();
+      expect(slow.bodyHash).not.toBe(promo.bodyHash);
+      expect(slow.summary).toBeNull();
+      const q = await readQueue(root);
+      expect(q.items.find((i) => i.id.endsWith('#apply_promo'))?.attempts).toBe(0);
+      await rm(fakeDir, { recursive: true, force: true });
+    },
+    30_000,
+  );
 });
